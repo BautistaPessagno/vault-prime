@@ -36,7 +36,7 @@ export default function Home() {
     setSalt(salt);
     setKey(key);
     setIv(iv);
-    const encrypted = await encrypt(text, key, iv);
+    const encrypted = await encrypt(key, iv, text);
     setMessage(encrypted);
   };
 
@@ -47,7 +47,7 @@ export default function Home() {
     setIsValid(ans);
     setVerificationAttempted(true);
     if (ans) {
-      const decrypted = await decrypt(message, key, iv);
+      const decrypted = await decrypt(key, iv, message);
       setMessage(decrypted);
     }
   };

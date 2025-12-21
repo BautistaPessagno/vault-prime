@@ -5,7 +5,6 @@ import { gcm } from "@noble/ciphers/aes.js";
 import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 
-
 // ----------------------------- Argon2 hash ------------------------------------------------
 //
 export async function hash(password: string) {
@@ -25,7 +24,13 @@ export async function verify(password: string, hashedPassword: string) {
 //el payloead es el master key y el salt es la password
 export async function generateKey(payload: string, salt: string) {
   const enc = new TextEncoder();
-  const k = hkdf(sha256, enc.encode(payload), enc.encode(salt), new Uint8Array(0), 32);
+  const k = hkdf(
+    sha256,
+    enc.encode(payload),
+    enc.encode(salt),
+    new Uint8Array(0),
+    32,
+  );
   return bytesToHex(k);
 }
 
