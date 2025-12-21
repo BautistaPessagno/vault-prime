@@ -1,9 +1,13 @@
 "use server";
 import * as argon2 from "argon2";
-import crypto from "crypto";
+import { randomBytes, bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
+import { gcm } from "@noble/ciphers/aes.js";
+import { hkdf } from "@noble/hashes/hkdf.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 
-const algorithm = "aes-256-gcm";
 
+// ----------------------------- Argon2 hash ------------------------------------------------
+//
 export async function hash(password: string) {
   return await argon2.hash(password, {
     type: argon2.argon2id,
@@ -11,55 +15,44 @@ export async function hash(password: string) {
   });
 }
 
-export async function generateSalt(): Promise<string> {
-  return crypto.randomBytes(32).toString("hex");
-}
-
-export async function generateIv(): Promise<string> {
-  return crypto.randomBytes(12).toString("hex");
-}
-
 export async function verify(password: string, hashedPassword: string) {
   return await argon2.verify(hashedPassword, password);
 }
 
-// generates AES-256-GCM key using Argon2 salt
-export async function generateKey(password: string, salt: string) {
-  const key = await argon2.hash(password, {
-    type: argon2.argon2id,
-    memoryCost: 65536, // 64 MiB
-    salt: Buffer.from(salt, "hex"),
-    hashLength: 32,
-    raw: true,
-  });
-  return key.toString("hex");
+// ----------------------------- derivation key ------------------------------------------------
+
+// este hash se va a usar como key para el aes-256-gcm
+//el payloead es el master key y el salt es la password
+export async function generateKey(payload: string, salt: string) {
+  const enc = new TextEncoder();
+  const k = hkdf(sha256, enc.encode(payload), enc.encode(salt), new Uint8Array(0), 32);
+  return bytesToHex(k);
 }
 
-export async function encrypt(password: string, key: string, iv: string) {
-  const cipher = crypto.createCipheriv(
-    "aes-256-gcm",
-    Buffer.from(key, "hex"),
-    Buffer.from(iv, "hex"),
-  );
-  let encrypted = cipher.update(password, "utf8", "base64");
-  encrypted += cipher.final("base64");
-  const tag = cipher.getAuthTag();
-  return encrypted + ":" + tag.toString("base64");
+// ----------------------------- aes-256-gcm key ------------------------------------------------
+
+export async function generateSalt() {
+  return bytesToHex(randomBytes(32));
 }
 
-export async function decrypt(
-  encryptedPassword: string,
-  key: string,
-  iv: string,
-) {
-  const [content, tag] = encryptedPassword.split(":");
-  const decipher = crypto.createDecipheriv(
-    "aes-256-gcm",
-    Buffer.from(key, "hex"),
-    Buffer.from(iv, "hex"),
-  );
-  decipher.setAuthTag(Buffer.from(tag, "base64"));
-  let decrypted = decipher.update(content, "base64", "utf8");
-  decrypted += decipher.final("utf8");
-  return decrypted;
+export async function generateIv() {
+  return bytesToHex(randomBytes(24));
+}
+
+export async function encrypt(key: string, nonce: string, data: string) {
+  const keyBytes = hexToBytes(key);
+  const nonceBytes = hexToBytes(nonce);
+  const aes = gcm(keyBytes, nonceBytes);
+  const dataBytes = new TextEncoder().encode(data);
+  const encrypted = aes.encrypt(dataBytes);
+  return bytesToHex(encrypted);
+}
+
+export async function decrypt(key: string, nonce: string, ciphertext: string) {
+  const keyBytes = hexToBytes(key);
+  const nonceBytes = hexToBytes(nonce);
+  const aes = gcm(keyBytes, nonceBytes);
+  const ciphertextBytes = hexToBytes(ciphertext);
+  const decrypted = aes.decrypt(ciphertextBytes);
+  return new TextDecoder().decode(decrypted);
 }

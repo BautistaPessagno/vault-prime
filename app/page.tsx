@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, FormEvent } from "react";
 import {
   hash,
   verify,
@@ -25,7 +25,7 @@ export default function Home() {
 
   const text = "hola mundo";
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const hashed = await hash(password1);
     setHashedPassword(hashed);
@@ -40,7 +40,7 @@ export default function Home() {
     setMessage(encrypted);
   };
 
-  const checkPassword = async (e) => {
+  const checkPassword = async (e: FormEvent) => {
     e.preventDefault();
     const ans = await verify(password2, hashedPassword);
     console.log(ans);
