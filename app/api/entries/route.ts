@@ -1,45 +1,42 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
-  deriveEntryKey,
+  getSessionData,
   encryptEntryFields,
   decryptEntryFields,
-  requireSessionUserId,
   type EntryRow,
 } from "@/lib/entries/crypto";
 
 const entrySelect =
-  "id, user_id, created_at, nombre, usuario, contrasena, last_edited, last_copied";
+  "id, user_id, created_at, nombre, usuario, contraseña, last_edited, last_copied";
 
-export async function GET(req: Request) {
-  const userId = await requireSessionUserId();
-  if (!userId) {
+export async function GET() {
+  const session = await getSessionData();
+  if (!session) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const masterPassword = req.headers.get("x-master-password") ?? "";
-  if (!masterPassword) {
-    return NextResponse.json({ error: "missing_master" }, { status: 400 });
-  }
+  const { userId, encryptionKey } = session;
+  // Convert userId to number if it's numeric (for integer PKs in database)
+  const userIdForQuery = /^\d+$/.test(userId) ? parseInt(userId, 10) : userId;
 
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("entries")
     .select(entrySelect)
-    .eq("user_id", userId)
+    .eq("user_id", userIdForQuery)
     .order("created_at", { ascending: false });
 
   if (error) {
+    console.error("[Entries] Database error:", error);
     return NextResponse.json({ error: "db" }, { status: 500 });
   }
-
-  const key = await deriveEntryKey(masterPassword);
 
   try {
     const entries = await Promise.all(
       (data ?? []).map(async (entry: EntryRow) => ({
         ...entry,
-        ...(await decryptEntryFields(entry, key)),
+        ...(await decryptEntryFields(entry, encryptionKey)),
       })),
     );
 
@@ -50,46 +47,40 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const userId = await requireSessionUserId();
-  if (!userId) {
+  const session = await getSessionData();
+  if (!session) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  const { userId, encryptionKey } = session;
+  // Convert userId to number if it's numeric (for integer PKs in database)
+  const userIdForQuery = /^\d+$/.test(userId) ? parseInt(userId, 10) : userId;
+
   const body = await req.json().catch(() => null);
-  const masterPassword = String(body?.masterPassword ?? "");
-  if (!masterPassword) {
-    return NextResponse.json({ error: "missing_master" }, { status: 400 });
-  }
 
   const nombre = String(body?.nombre ?? "").trim();
   const usuario = String(body?.usuario ?? "").trim();
   const contrasena = String(body?.contrasena ?? "");
-  if (!nombre || !usuario || !contrasena) {
+  if (!nombre || !contrasena) {
     return NextResponse.json({ error: "missing_fields" }, { status: 400 });
   }
 
-  const key = await deriveEntryKey(masterPassword);
   const encryptedFields = await encryptEntryFields(
     { nombre, usuario, contrasena },
-    key,
+    encryptionKey,
   );
 
   const now = new Date().toISOString();
-  const createdAt = typeof body?.created_at === "string" ? body.created_at : now;
   const lastEdited =
-    typeof body?.last_edited === "string" ? body.last_edited : createdAt;
+    typeof body?.last_edited === "string" ? body.last_edited : now;
   const lastCopied =
     typeof body?.last_copied === "string" ? body.last_copied : null;
-  const entryId =
-    typeof body?.id === "string" && body.id ? body.id : crypto.randomUUID();
 
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("entries")
     .insert({
-      id: entryId,
-      user_id: userId,
-      created_at: createdAt,
+      user_id: userIdForQuery,
       last_edited: lastEdited,
       last_copied: lastCopied,
       ...encryptedFields,
@@ -98,16 +89,18 @@ export async function POST(req: Request) {
     .single();
 
   if (error || !data) {
+    console.error("[Entries POST] Database error:", error);
     return NextResponse.json({ error: "db" }, { status: 500 });
   }
 
   try {
     const entry = {
       ...data,
-      ...(await decryptEntryFields(data, key)),
+      ...(await decryptEntryFields(data, encryptionKey)),
     };
     return NextResponse.json({ entry }, { status: 201 });
-  } catch {
+  } catch (decryptError) {
+    console.error("[Entries POST] Decrypt error:", decryptError);
     return NextResponse.json({ error: "decrypt" }, { status: 400 });
   }
 }

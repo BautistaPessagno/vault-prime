@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { hash, verify } from "@/lib/auth/encryption";
+import { hash, verify, deriveKey } from "@/lib/auth/encryption";
 import { signSessionToken } from "@/lib/auth/jwt";
 
 type Credentials = {
@@ -62,7 +62,7 @@ function withSuccess(request: Request, token: string) {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: 60 * 60 * 24 * 7, // 7 days
   });
 
   return response;
@@ -91,6 +91,8 @@ export async function POST(req: Request) {
     return withError(req, "invalid", 401);
   }
 
-  const token = await signSessionToken({ sub: user.id, email });
+  // Derive encryption key for entries and include it in the session
+  const encryptionKey = await deriveKey(masterKey, password);
+  const token = await signSessionToken({ sub: user.id, email, ek: encryptionKey });
   return withSuccess(req, token);
 }

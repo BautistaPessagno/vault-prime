@@ -35,6 +35,7 @@ export async function verifySessionToken(token: string) {
   const { payload } = await jwtVerify(token, secret, {
     issuer,
     audience,
+    clockTolerance: 15,
   });
 
   return payload;

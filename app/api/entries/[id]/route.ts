@@ -1,45 +1,44 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
-  deriveEntryKey,
+  getSessionData,
   encryptEntryFields,
   decryptEntryFields,
-  requireSessionUserId,
   type EntryRow,
 } from "@/lib/entries/crypto";
 
 const entrySelect =
-  "id, user_id, created_at, nombre, usuario, contrasena, last_edited, last_copied";
+  "id, user_id, created_at, nombre, usuario, contraseña, last_edited, last_copied";
 
 type RouteContext = {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 };
 
 export async function PUT(req: Request, context: RouteContext) {
-  const userId = await requireSessionUserId();
-  if (!userId) {
+  const { id } = await context.params;
+  const session = await getSessionData();
+  if (!session) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  const { userId, encryptionKey } = session;
+  // Convert userId to number if it's numeric (for integer PKs in database)
+  const userIdForQuery = /^\d+$/.test(userId) ? parseInt(userId, 10) : userId;
+
   const body = await req.json().catch(() => null);
-  const masterPassword = String(body?.masterPassword ?? "");
-  if (!masterPassword) {
-    return NextResponse.json({ error: "missing_master" }, { status: 400 });
-  }
 
   const nombre = String(body?.nombre ?? "").trim();
   const usuario = String(body?.usuario ?? "").trim();
   const contrasena = String(body?.contrasena ?? "");
-  if (!nombre || !usuario || !contrasena) {
+  if (!nombre || !contrasena) {
     return NextResponse.json({ error: "missing_fields" }, { status: 400 });
   }
 
-  const key = await deriveEntryKey(masterPassword);
   const encryptedFields = await encryptEntryFields(
     { nombre, usuario, contrasena },
-    key,
+    encryptionKey,
   );
 
   const updates: Partial<EntryRow> = {
@@ -58,38 +57,46 @@ export async function PUT(req: Request, context: RouteContext) {
   const { data, error } = await supabase
     .from("entries")
     .update(updates)
-    .eq("id", context.params.id)
-    .eq("user_id", userId)
+    .eq("id", id)
+    .eq("user_id", userIdForQuery)
     .select(entrySelect)
     .maybeSingle();
 
   if (error || !data) {
+    console.error("[Entries PUT] Database error:", error);
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
   try {
     const entry = {
       ...data,
-      ...(await decryptEntryFields(data, key)),
+      ...(await decryptEntryFields(data, encryptionKey)),
     };
     return NextResponse.json({ entry });
-  } catch {
+  } catch (decryptError) {
+    console.error("[Entries PUT] Decrypt error:", decryptError);
     return NextResponse.json({ error: "decrypt" }, { status: 400 });
   }
 }
 
 export async function DELETE(_req: Request, context: RouteContext) {
-  const userId = await requireSessionUserId();
-  if (!userId) {
+  const { id } = await context.params;
+  
+  const session = await getSessionData();
+  if (!session) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+
+  const { userId } = session;
+  // Convert userId to number if it's numeric (for integer PKs in database)
+  const userIdForQuery = /^\d+$/.test(userId) ? parseInt(userId, 10) : userId;
 
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("entries")
     .delete()
-    .eq("id", context.params.id)
-    .eq("user_id", userId);
+    .eq("id", id)
+    .eq("user_id", userIdForQuery);
 
   if (error) {
     return NextResponse.json({ error: "db" }, { status: 500 });

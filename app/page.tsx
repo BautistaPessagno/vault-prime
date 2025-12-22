@@ -1,13 +1,14 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type Entry = {
-  id: string;
-  user_id: string | null;
+  id: string | number;
+  user_id: string | number | null;
   created_at: string;
   nombre: string;
-  usuario: string;
+  usuario: string; // Used as Link/Username
   contrasena: string;
   last_edited: string | null;
   last_copied: string | null;
@@ -25,43 +26,21 @@ const emptyDraft: EntryDraft = {
   contrasena: "",
 };
 
-const formatDate = (value: string | null) => {
-  if (!value) {
-    return "-";
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return new Intl.DateTimeFormat("es-AR", {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-};
-
 export default function Home() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [masterKey, setMasterKey] = useState("");
-  const [showMaster, setShowMaster] = useState(false);
-  const [vaultStatus, setVaultStatus] = useState<
-    "locked" | "unlocking" | "unlocked"
-  >("locked");
-  const [vaultError, setVaultError] = useState<string | null>(null);
-  const [apiError, setApiError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<EntryDraft>(emptyDraft);
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const router = useRouter();
 
   const activeEntry = entries.find((entry) => entry.id === activeId) ?? null;
-  const isLocked = vaultStatus !== "unlocked";
 
   const filteredEntries = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -84,55 +63,22 @@ export default function Home() {
     return () => window.clearTimeout(timeout);
   }, [notice]);
 
-  const unlockWithPassword = async (password: string) => {
-    if (!password.trim()) {
-      setVaultError("Ingresa la clave maestra para desbloquear.");
-      return;
-    }
-    setVaultError(null);
-    setVaultStatus("unlocking");
-    setMasterKey(password);
-    const ok = await loadEntries(password);
-    if (!ok) {
-      setVaultStatus("locked");
-      return;
-    }
-    sessionStorage.setItem("vault_master_password", password);
-    setVaultStatus("unlocked");
-    setNotice("Vault desbloqueado.");
-  };
-
+  // Auto-load entries on mount (encryption key is stored in session)
   useEffect(() => {
-    const saved = sessionStorage.getItem("vault_master_password");
-    if (!saved) {
-      return;
-    }
-    unlockWithPassword(saved);
+    loadEntries();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadEntries = async (masterPassword: string): Promise<boolean> => {
+  const loadEntries = async (): Promise<boolean> => {
     setLoading(true);
-    setApiError(null);
     try {
       const res = await fetch("/api/entries", {
-        headers: {
-          "x-master-password": masterPassword,
-        },
         cache: "no-store",
+        credentials: "include",
       });
       if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as {
-          error?: string;
-        };
-        if (payload.error === "decrypt") {
-          setVaultError("Clave incorrecta o datos corruptos.");
-          setEntries([]);
-          return false;
-        }
         if (res.status === 401) {
-          setApiError("Sesion expirada. Inicia sesion.");
-          setEntries([]);
+          router.push("/login");
           return false;
         }
         throw new Error("db");
@@ -140,41 +86,33 @@ export default function Home() {
       const payload = (await res.json()) as { entries?: Entry[] };
       const incoming = payload.entries ?? [];
       setEntries(incoming);
-      setActiveId(incoming[0]?.id ?? null);
       return true;
-    } catch (error) {
-      setEntries([]);
-      setApiError("No se pudo cargar la lista desde la base.");
-      return true;
+    } catch {
+      setNotice("Error al cargar las entradas.");
+      return false;
     } finally {
       setLoading(false);
     }
   };
 
-  const handleUnlock = async () => {
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
     try {
-      await unlockWithPassword(masterKey);
-    } catch (error) {
-      setVaultStatus("locked");
-      setVaultError("No se pudo desbloquear. Revisa la clave.");
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    } finally {
+      setEntries([]);
+      setActiveId(null);
+      setIsCreating(false);
+      setIsEditing(false);
+      setDraft(emptyDraft);
+      setIsLoggingOut(false);
+      router.push("/login");
+      router.refresh();
     }
-  };
-
-  const handleLock = () => {
-    sessionStorage.removeItem("vault_master_password");
-    setEntries([]);
-    setActiveId(null);
-    setIsCreating(false);
-    setIsEditing(false);
-    setDraft(emptyDraft);
-    setVaultStatus("locked");
-    setNotice("Vault bloqueado.");
   };
 
   const handleCreate = () => {
-    if (isLocked) {
-      return;
-    }
     setIsCreating(true);
     setIsEditing(false);
     setDraft(emptyDraft);
@@ -182,9 +120,7 @@ export default function Home() {
   };
 
   const handleEdit = () => {
-    if (!activeEntry || isLocked) {
-      return;
-    }
+    if (!activeEntry) return;
     setIsEditing(true);
     setIsCreating(false);
     setDraft({
@@ -201,14 +137,9 @@ export default function Home() {
   };
 
   const persistEntry = async (
-    entry: Entry,
+    entry: Partial<Entry> & { nombre: string; usuario: string; contrasena: string },
     mode: "create" | "update" | "delete",
-  ) => {
-    if (mode !== "delete" && !masterKey.trim()) {
-      setVaultError("Ingresa la clave maestra para guardar.");
-      return;
-    }
-    setApiError(null);
+  ): Promise<Entry | null> => {
     try {
       const url =
         mode === "create" ? "/api/entries" : `/api/entries/${entry.id}`;
@@ -216,523 +147,315 @@ export default function Home() {
         mode === "delete"
           ? null
           : {
-              id: entry.id,
               nombre: entry.nombre,
               usuario: entry.usuario,
               contrasena: entry.contrasena,
-              created_at: entry.created_at,
               last_edited: entry.last_edited,
               last_copied: entry.last_copied,
-              masterPassword: masterKey,
             };
       const res = await fetch(url, {
         method:
           mode === "create" ? "POST" : mode === "delete" ? "DELETE" : "PUT",
         headers: payload ? { "Content-Type": "application/json" } : undefined,
         body: payload ? JSON.stringify(payload) : undefined,
+        credentials: "include",
       });
-      if (!res.ok) {
-        throw new Error("db");
-      }
-    } catch (error) {
-      setApiError("No se pudo sincronizar con la base de datos.");
+      if (!res.ok) throw new Error("db");
+      
+      if (mode === "delete") return null;
+      
+      const data = await res.json();
+      return data.entry as Entry;
+    } catch {
+      setNotice("Error al guardar cambios.");
+      return null;
     }
   };
 
   const handleSave = async (event: FormEvent) => {
     event.preventDefault();
-    if (!masterKey.trim()) {
-      setVaultError("Ingresa la clave maestra para guardar.");
+    if (!draft.nombre.trim() || !draft.contrasena) {
+      setNotice("Nombre y contraseña son requeridos.");
       return;
     }
-    if (!draft.nombre.trim() || !draft.usuario.trim() || !draft.contrasena) {
-      setVaultError("Completa nombre, usuario y contrasena.");
-      return;
-    }
-    setVaultError(null);
+
     const now = new Date().toISOString();
 
     if (isCreating) {
-      const newEntry: Entry = {
-        id: crypto.randomUUID(),
-        user_id: null,
-        created_at: now,
-        last_edited: now,
-        last_copied: null,
+      const newEntryData = {
         nombre: draft.nombre.trim(),
         usuario: draft.usuario.trim(),
         contrasena: draft.contrasena,
+        last_edited: now,
+        last_copied: null,
       };
-      setEntries((prev) => [newEntry, ...prev]);
-      setActiveId(newEntry.id);
       setIsCreating(false);
       setDraft(emptyDraft);
-      await persistEntry(newEntry, "create");
-      setNotice("Entrada creada y cifrada.");
-      return;
-    }
-
-    if (isEditing && activeEntry) {
-      const updated: Entry = {
+      
+      const createdEntry = await persistEntry(newEntryData, "create");
+      if (createdEntry) {
+        setEntries((prev) => [createdEntry, ...prev]);
+        setActiveId(createdEntry.id);
+        setNotice("Entrada creada.");
+      }
+    } else if (isEditing && activeEntry) {
+      const updated = {
         ...activeEntry,
         nombre: draft.nombre.trim(),
         usuario: draft.usuario.trim(),
         contrasena: draft.contrasena,
         last_edited: now,
       };
-      setEntries((prev) =>
-        prev.map((entry) => (entry.id === updated.id ? updated : entry)),
-      );
       setIsEditing(false);
       setDraft(emptyDraft);
-      await persistEntry(updated, "update");
-      setNotice("Entrada actualizada.");
+      
+      const savedEntry = await persistEntry(updated, "update");
+      if (savedEntry) {
+        setEntries((prev) =>
+          prev.map((entry) => (entry.id === savedEntry.id ? savedEntry : entry)),
+        );
+        setNotice("Entrada actualizada.");
+      }
     }
   };
 
   const handleDelete = async () => {
-    if (!activeEntry || isLocked) {
-      return;
-    }
-    const confirmed = window.confirm(
-      `Eliminar ${activeEntry.nombre}? Esta accion no se puede deshacer.`,
-    );
-    if (!confirmed) {
-      return;
-    }
+    if (!activeEntry) return;
+    if (!window.confirm(`¿Eliminar ${activeEntry.nombre}?`)) return;
+    
     const targetId = activeEntry.id;
     setEntries((prev) => prev.filter((entry) => entry.id !== targetId));
-    setActiveId((prev) => (prev === targetId ? null : prev));
+    setActiveId(null);
     await persistEntry(activeEntry, "delete");
     setNotice("Entrada eliminada.");
   };
 
-  const handleCopy = async (
-    entry: Entry,
-    field: "usuario" | "contrasena" | "login",
-  ) => {
-    const payload =
-      field === "login"
-        ? `${entry.usuario}\t${entry.contrasena}`
-        : entry[field];
+  const handleCopy = async (text: string, label: string) => {
     try {
-      await navigator.clipboard.writeText(payload);
-      setNotice(
-        field === "login"
-          ? "Login copiado."
-          : field === "usuario"
-            ? "Usuario copiado."
-            : "Contrasena copiada.",
-      );
-    } catch (error) {
-      setNotice("No se pudo copiar al portapapeles.");
+      await navigator.clipboard.writeText(text);
+      setNotice(`${label} copiado.`);
+    } catch {
+      setNotice("No se pudo copiar.");
     }
-
-    const now = new Date().toISOString();
-    const updated: Entry = { ...entry, last_copied: now };
-    setEntries((prev) =>
-      prev.map((item) => (item.id === updated.id ? updated : item)),
-    );
-    await persistEntry(updated, "update");
   };
 
-  const statusLabel =
-    vaultStatus === "unlocked"
-      ? "Desbloqueado"
-      : vaultStatus === "unlocking"
-        ? "Desbloqueando..."
-        : "Bloqueado";
+  // Show loading state while checking authentication
+  if (loading && entries.length === 0) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+        <div className="text-center">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-teal-600 border-t-transparent"></div>
+          <p className="mt-4 text-sm text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#f5efe6] text-slate-900">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-32 right-[-10%] h-80 w-80 rounded-full bg-[radial-gradient(circle_at_center,rgba(15,118,110,0.35),transparent_70%)]" />
-        <div className="absolute bottom-[-20%] left-[-10%] h-96 w-96 rounded-full bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.22),transparent_70%)]" />
-      </div>
-
-      <div className="relative mx-auto flex max-w-6xl flex-col gap-8 px-6 py-10">
-        <header className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-          <div className="space-y-2">
-            <p className="text-xs uppercase tracking-[0.4em] text-teal-700">
-              Vault Prime
-            </p>
-            <h1 className="text-4xl font-semibold text-slate-900 md:text-5xl">
-              Password Desk
-            </h1>
-            <p className="max-w-xl text-sm text-slate-600">
-              Gestiona entradas cifradas con un flujo master-detail para crear,
-              editar y copiar credenciales rapidamente.
-            </p>
+    <div className="flex h-screen w-full bg-white text-gray-900">
+      {/* Sidebar - List View */}
+      <aside className="flex w-80 flex-col border-r border-gray-200 bg-gray-50">
+        <div className="flex flex-col gap-4 p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h1 className="text-lg font-bold text-gray-800">Mis Entradas</h1>
+            <button
+              onClick={handleCreate}
+              className="rounded-md bg-teal-600 p-1.5 text-white hover:bg-teal-700"
+              title="Crear nueva entrada"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
           </div>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar..."
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+          />
+        </div>
+        
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+            <p className="p-4 text-sm text-gray-500">Cargando...</p>
+          ) : filteredEntries.length === 0 ? (
+            <p className="p-4 text-sm text-gray-500">No hay entradas.</p>
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {filteredEntries.map((entry) => (
+                <li key={entry.id}>
+                  <button
+                    onClick={() => {
+                      setActiveId(entry.id);
+                      setIsCreating(false);
+                      setIsEditing(false);
+                    }}
+                    className={`block w-full px-4 py-3 text-left hover:bg-gray-100 ${
+                      activeId === entry.id ? "bg-teal-50 border-l-4 border-teal-600" : ""
+                    }`}
+                  >
+                    <p className="font-medium text-gray-900 truncate">{entry.nombre}</p>
+                    <p className="text-xs text-gray-500 truncate">{entry.usuario || "Sin link"}</p>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
-          <div className="w-full rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-[0_24px_60px_-40px_rgba(15,118,110,0.65)] backdrop-blur md:w-[360px]">
-            <label className="text-xs uppercase tracking-[0.2em] text-slate-500">
-              Clave maestra
-            </label>
-            <div className="mt-2 flex gap-2">
-              <input
-                type={showMaster ? "text" : "password"}
-                value={masterKey}
-                onChange={(event) => setMasterKey(event.target.value)}
-                placeholder="Tu frase secreta"
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
-              />
-              <button
-                type="button"
-                onClick={() => setShowMaster((prev) => !prev)}
-                className="rounded-xl border border-slate-200 px-3 text-xs text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
-              >
-                {showMaster ? "Ocultar" : "Mostrar"}
-              </button>
-              <button
-                type="button"
-                onClick={handleUnlock}
-                className="rounded-xl bg-teal-700 px-4 text-xs font-semibold text-white transition hover:bg-teal-800"
-              >
-                Unlock
-              </button>
-            </div>
-            <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-              <span>Estado: {statusLabel}</span>
-              {vaultStatus === "unlocked" ? (
+        <div className="border-t border-gray-200 p-4">
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content - Detail View */}
+      <main className="flex-1 overflow-y-auto bg-white p-8">
+        {notice && (
+          <div className="fixed top-4 right-4 z-50 rounded-md bg-gray-800 px-4 py-2 text-sm text-white shadow-lg">
+            {notice}
+          </div>
+        )}
+
+        {isCreating || isEditing ? (
+          <div className="mx-auto max-w-2xl">
+            <h2 className="mb-6 text-2xl font-bold text-gray-900">
+              {isCreating ? "Nueva Entrada" : "Editar Entrada"}
+            </h2>
+            <form onSubmit={handleSave} className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Nombre</label>
+                <input
+                  type="text"
+                  value={draft.nombre}
+                  onChange={(e) => setDraft({ ...draft, nombre: e.target.value })}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500"
+                  placeholder="Nombre del sitio"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Link / Usuario</label>
+                <input
+                  type="text"
+                  value={draft.usuario}
+                  onChange={(e) => setDraft({ ...draft, usuario: e.target.value })}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500"
+                  placeholder="https://ejemplo.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Contraseña</label>
+                <div className="relative mt-1">
+                  <input
+                    type="text"
+                    value={draft.contrasena}
+                    onChange={(e) => setDraft({ ...draft, contrasena: e.target.value })}
+                    className="block w-full rounded-md border border-gray-300 px-3 py-2 pr-10 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500"
+                  />
+                  <button
+                     type="button"
+                     onClick={() => setDraft({ ...draft, contrasena: Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10) })}
+                     className="absolute right-2 top-2 text-xs text-teal-600 hover:text-teal-800"
+                  >
+                    Generar
+                  </button>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={handleLock}
-                  className="text-xs font-semibold text-teal-700 hover:text-teal-900"
+                  onClick={handleCancel}
+                  className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
-                  Lock
+                  Cancelar
                 </button>
-              ) : null}
-            </div>
-            {vaultError ? (
-              <p className="mt-2 text-xs text-rose-600">{vaultError}</p>
-            ) : null}
+                <button
+                  type="submit"
+                  className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"
+                >
+                  Guardar
+                </button>
+              </div>
+            </form>
           </div>
-        </header>
+        ) : activeEntry ? (
+          <div className="mx-auto max-w-2xl">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-3xl font-bold text-gray-900">{activeEntry.nombre}</h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleEdit}
+                  className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Editar
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="rounded-md border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+                >
+                  Eliminar
+                </button>
+              </div>
+            </div>
 
-        <section className="grid gap-6 lg:grid-cols-[minmax(320px,1fr)_minmax(360px,1.1fr)]">
-          <div className="flex flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white/85 shadow-[0_30px_70px_-50px_rgba(15,118,110,0.5)] backdrop-blur">
-            <div className="flex items-center justify-between px-5 pb-3 pt-5">
+            <div className="space-y-6 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
               <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-                  Entradas
-                </p>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Sitios guardados
-                </h2>
-                <p className="text-xs text-slate-500">
-                  {filteredEntries.length} sitios
-                </p>
+                <label className="text-xs font-semibold uppercase tracking-wider text-gray-500">Link</label>
+                <div className="mt-1 flex items-center justify-between rounded-md bg-gray-50 px-3 py-2">
+                   <a href={activeEntry.usuario.startsWith('http') ? activeEntry.usuario : `https://${activeEntry.usuario}`} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline truncate mr-2">
+                     {activeEntry.usuario}
+                   </a>
+                   <button
+                     onClick={() => handleCopy(activeEntry.usuario, "Link")}
+                     className="text-gray-400 hover:text-gray-600"
+                     title="Copiar"
+                   >
+                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                   </button>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={handleCreate}
-                disabled={isLocked}
-                className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Nueva entrada
-              </button>
-            </div>
 
-            <div className="px-5 pb-4">
-              <input
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Buscar por nombre o usuario"
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
-              />
-            </div>
-
-            <div className="border-t border-slate-200">
-              <div className="max-h-[420px] overflow-auto">
-                {isLocked ? (
-                  <div className="px-5 py-10 text-sm text-slate-500">
-                    Desbloquea el vault para ver las entradas.
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wider text-gray-500">Contraseña</label>
+                <div className="mt-1 flex items-center justify-between rounded-md bg-gray-50 px-3 py-2">
+                  <span className="font-mono text-gray-900 truncate mr-2">
+                    {showPassword ? activeEntry.contrasena : "••••••••••••••••"}
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-gray-400 hover:text-gray-600"
+                      title={showPassword ? "Ocultar" : "Mostrar"}
+                    >
+                      {showPassword ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleCopy(activeEntry.contrasena, "Contraseña")}
+                      className="text-gray-400 hover:text-gray-600"
+                      title="Copiar"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2-2v1"></path></svg>
+                    </button>
                   </div>
-                ) : loading ? (
-                  <div className="px-5 py-10 text-sm text-slate-500">
-                    Cargando entradas...
-                  </div>
-                ) : filteredEntries.length === 0 ? (
-                  <div className="px-5 py-10 text-sm text-slate-500">
-                    No hay entradas aun. Crea la primera.
-                  </div>
-                ) : (
-                  <table className="w-full text-left text-sm">
-                    <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-[0.2em] text-slate-400">
-                      <tr>
-                        <th className="px-4 py-3">Sitio</th>
-                        <th className="px-4 py-3">Usuario</th>
-                        <th className="px-4 py-3">Editado</th>
-                        <th className="px-4 py-3">Copiado</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredEntries.map((entry) => {
-                        const isActive = entry.id === activeId;
-                        return (
-                          <tr
-                            key={entry.id}
-                            onClick={() => setActiveId(entry.id)}
-                            className={`cursor-pointer border-t border-slate-100 transition hover:bg-teal-50/60 ${
-                              isActive ? "bg-teal-50/80" : ""
-                            }`}
-                          >
-                            <td className="px-4 py-3 font-semibold text-slate-900">
-                              {entry.nombre}
-                            </td>
-                            <td className="px-4 py-3 text-slate-600">
-                              {entry.usuario}
-                            </td>
-                            <td className="px-4 py-3 text-xs text-slate-500">
-                              {formatDate(
-                                entry.last_edited ?? entry.created_at,
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-xs text-slate-500">
-                              {formatDate(entry.last_copied)}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
+                </div>
               </div>
             </div>
           </div>
-
-          <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-[0_30px_70px_-50px_rgba(14,116,144,0.5)] backdrop-blur">
-            <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 rounded-full bg-[radial-gradient(circle_at_center,rgba(20,184,166,0.2),transparent_65%)]" />
-            <div className="relative">
-              {notice ? (
-                <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-700">
-                  {notice}
-                </div>
-              ) : null}
-              {apiError ? (
-                <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700">
-                  {apiError}
-                </div>
-              ) : null}
-
-              {isLocked ? (
-                <div className="space-y-3">
-                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-                    Detalle
-                  </p>
-                  <h3 className="text-2xl font-semibold text-slate-900">
-                    Vault bloqueado
-                  </h3>
-                  <p className="text-sm text-slate-600">
-                    Desbloquea para visualizar, editar y copiar tus credenciales
-                    cifradas.
-                  </p>
-                </div>
-              ) : isCreating || isEditing ? (
-                <form onSubmit={handleSave} className="space-y-5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-                        {isCreating ? "Nueva entrada" : "Editar entrada"}
-                      </p>
-                      <h3 className="text-2xl font-semibold text-slate-900">
-                        {isCreating ? "Crear sitio" : "Actualizar sitio"}
-                      </h3>
-                    </div>
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500">
-                      Datos cifrados
-                    </span>
-                  </div>
-
-                  <div className="space-y-4">
-                    <label className="block text-xs uppercase tracking-[0.2em] text-slate-500">
-                      Nombre del sitio
-                    </label>
-                    <input
-                      type="text"
-                      value={draft.nombre}
-                      onChange={(event) =>
-                        setDraft((prev) => ({
-                          ...prev,
-                          nombre: event.target.value,
-                        }))
-                      }
-                      placeholder="Ej: Banco Central"
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
-                    />
-                  </div>
-
-                  <div className="space-y-4">
-                    <label className="block text-xs uppercase tracking-[0.2em] text-slate-500">
-                      Usuario
-                    </label>
-                    <input
-                      type="text"
-                      value={draft.usuario}
-                      onChange={(event) =>
-                        setDraft((prev) => ({
-                          ...prev,
-                          usuario: event.target.value,
-                        }))
-                      }
-                      placeholder="usuario@email.com"
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
-                    />
-                  </div>
-
-                  <div className="space-y-4">
-                    <label className="block text-xs uppercase tracking-[0.2em] text-slate-500">
-                      Contrasena
-                    </label>
-                    <input
-                      type="text"
-                      value={draft.contrasena}
-                      onChange={(event) =>
-                        setDraft((prev) => ({
-                          ...prev,
-                          contrasena: event.target.value,
-                        }))
-                      }
-                      placeholder="Genera una clave segura"
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
-                    />
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={handleCancel}
-                      className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
-                      className="rounded-xl bg-teal-700 px-5 py-2 text-xs font-semibold text-white transition hover:bg-teal-800"
-                    >
-                      Guardar
-                    </button>
-                  </div>
-                </form>
-              ) : activeEntry ? (
-                <div className="space-y-6">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-                        Detalle
-                      </p>
-                      <h3 className="text-2xl font-semibold text-slate-900">
-                        {activeEntry.nombre}
-                      </h3>
-                      <p className="text-sm text-slate-500">
-                        Creado: {formatDate(activeEntry.created_at)}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={handleEdit}
-                        className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleDelete}
-                        className="rounded-xl border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600 transition hover:border-rose-300 hover:bg-rose-50"
-                      >
-                        Eliminar
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
-                      <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                        Usuario
-                      </p>
-                      <p className="mt-3 text-sm font-semibold text-slate-900">
-                        {activeEntry.usuario}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => handleCopy(activeEntry, "usuario")}
-                        className="mt-3 text-xs font-semibold text-teal-700 hover:text-teal-900"
-                      >
-                        Copiar usuario
-                      </button>
-                    </div>
-
-                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
-                      <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                        Contrasena
-                      </p>
-                      <p className="mt-3 text-sm font-semibold text-slate-900">
-                        {showPassword ? activeEntry.contrasena : "********"}
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-3">
-                        <button
-                          type="button"
-                          onClick={() => handleCopy(activeEntry, "contrasena")}
-                          className="text-xs font-semibold text-teal-700 hover:text-teal-900"
-                        >
-                          Copiar contrasena
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword((prev) => !prev)}
-                          className="text-xs font-semibold text-slate-500 hover:text-slate-700"
-                        >
-                          {showPassword ? "Ocultar" : "Mostrar"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
-                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                      Acciones rapidas
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-3">
-                      <button
-                        type="button"
-                        onClick={() => handleCopy(activeEntry, "login")}
-                        className="rounded-xl bg-teal-700 px-4 py-2 text-xs font-semibold text-white transition hover:bg-teal-800"
-                      >
-                        Copiar login completo
-                      </button>
-                      <div className="text-xs text-slate-500">
-                        Ultima edicion:{" "}
-                        <span className="font-semibold text-slate-700">
-                          {formatDate(activeEntry.last_edited)}
-                        </span>{" "}
-                        - Ultima copia:{" "}
-                        <span className="font-semibold text-slate-700">
-                          {formatDate(activeEntry.last_copied)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-                    Detalle
-                  </p>
-                  <h3 className="text-2xl font-semibold text-slate-900">
-                    Selecciona una entrada
-                  </h3>
-                  <p className="text-sm text-slate-600">
-                    Elige un sitio para ver el detalle o crea uno nuevo.
-                  </p>
-                </div>
-              )}
-            </div>
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center text-gray-400">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <p className="mt-4 text-lg font-medium text-gray-500">Selecciona una entrada</p>
           </div>
-        </section>
-      </div>
+        )}
+      </main>
     </div>
   );
 }

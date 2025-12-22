@@ -54,7 +54,8 @@ export default function SignupPage() {
         return;
       }
 
-      router.push("/login?success=created");
+      // Signup now automatically logs the user in with the session
+      router.push("/");
     } catch {
       setErrorMessage(signupMessages.unexpected);
     } finally {

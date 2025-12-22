@@ -1,57 +1,94 @@
 import { cookies } from "next/headers";
 import { verifySessionToken } from "@/lib/auth/jwt";
 import {
-  hash,
-  deriveKey,
   generateNonce,
   encrypt,
   decrypt,
 } from "@/lib/auth/encryption";
 
+// Database row type (uses contraseña with ñ)
 export type EntryRow = {
   id: string;
   user_id: string;
   created_at: string;
   nombre: string;
   usuario: string;
-  contrasena: string;
+  contraseña: string;
   last_edited: string | null;
   last_copied: string | null;
 };
 
-type EntryFields = Pick<EntryRow, "nombre" | "usuario" | "contrasena">;
+// API input/output type (uses contrasena without ñ for easier frontend handling)
+export type EntryInput = {
+  nombre: string;
+  usuario: string;
+  contrasena: string;
+};
 
-export async function requireSessionUserId() {
-  const token = (await cookies()).get("session")?.value;
+type DbEntryFields = Pick<EntryRow, "nombre" | "usuario" | "contraseña">;
+
+type SessionData = {
+  userId: string;
+  encryptionKey: string;
+} | null;
+
+export async function getSessionData(): Promise<SessionData> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("session")?.value;
   if (!token) {
+    console.log("[Auth] No session cookie found");
     return null;
   }
   try {
     const payload = await verifySessionToken(token);
-    return typeof payload.sub === "string" ? payload.sub : null;
-  } catch {
+    
+    // Handle both string and number user IDs
+    const userId = payload.sub != null ? String(payload.sub) : null;
+    const encryptionKey = typeof payload.ek === "string" ? payload.ek : null;
+    
+    if (!userId) {
+      console.log("[Auth] Missing userId in session");
+      return null;
+    }
+    
+    if (!encryptionKey) {
+      // Old token format without encryption key - user needs to re-login
+      console.log("[Auth] Session missing encryption key - requires re-login");
+      return null;
+    }
+    
+    return { userId, encryptionKey };
+  } catch (error) {
+    console.error("[Auth] Token verification failed:", error);
     return null;
   }
 }
 
-export async function deriveEntryKey(masterPassword: string) {
-  const masterKey = await hash(masterPassword);
-  return deriveKey(masterKey, masterPassword);
+export async function requireSessionUserId() {
+  const session = await getSessionData();
+  return session?.userId ?? null;
 }
 
-export async function encryptEntryFields(fields: EntryFields, key: string) {
+export async function getSessionEncryptionKey() {
+  const session = await getSessionData();
+  return session?.encryptionKey ?? null;
+}
+
+// Encrypt fields for database storage (input uses contrasena, output uses contraseña)
+export async function encryptEntryFields(fields: EntryInput, key: string): Promise<DbEntryFields> {
   return {
     nombre: await encryptValue(fields.nombre, key),
     usuario: await encryptValue(fields.usuario, key),
-    contrasena: await encryptValue(fields.contrasena, key),
+    contraseña: await encryptValue(fields.contrasena, key),
   };
 }
 
-export async function decryptEntryFields(fields: EntryFields, key: string) {
+// Decrypt fields from database (input uses contraseña, output uses contrasena for frontend)
+export async function decryptEntryFields(fields: DbEntryFields, key: string): Promise<EntryInput> {
   return {
     nombre: await decryptValue(fields.nombre, key),
     usuario: await decryptValue(fields.usuario, key),
-    contrasena: await decryptValue(fields.contrasena, key),
+    contrasena: await decryptValue(fields.contraseña, key),
   };
 }
 

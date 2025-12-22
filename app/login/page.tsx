@@ -62,7 +62,6 @@ export default function LoginPage() {
         return;
       }
 
-      sessionStorage.setItem("vault_master_password", password);
       router.push("/");
     } catch {
       setErrorMessage(loginMessages.unexpected);
