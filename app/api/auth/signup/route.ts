@@ -89,7 +89,8 @@ export async function POST(req: Request) {
     return withError(req, "exists", 409);
   }
 
-  const masterKey = await hash(password);
+  const salt = Buffer.from(email);
+  const masterKey = await hash(password, salt);
   const masterPasswordHashValue = await masterPasswordHash(masterKey);
 
   const { data: createdUser, error: insertError } = await supabase
@@ -107,6 +108,10 @@ export async function POST(req: Request) {
 
   // Derive encryption key for entries and include it in the session
   const encryptionKey = await deriveKey(masterKey, password);
-  const token = await signSessionToken({ sub: createdUser.id, email, ek: encryptionKey });
+  const token = await signSessionToken({
+    sub: createdUser.id,
+    email,
+    ek: encryptionKey,
+  });
   return withSuccess(req, token);
 }

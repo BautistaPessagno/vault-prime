@@ -85,7 +85,8 @@ export async function POST(req: Request) {
     return withError(req, "invalid", 401);
   }
 
-  const masterKey = await hash(password);
+  const salt = Buffer.from(email);
+  const masterKey = await hash(password, salt);
   const ok = await verify(masterKey, user.master_password_hash);
   if (!ok) {
     return withError(req, "invalid", 401);
@@ -93,6 +94,10 @@ export async function POST(req: Request) {
 
   // Derive encryption key for entries and include it in the session
   const encryptionKey = await deriveKey(masterKey, password);
-  const token = await signSessionToken({ sub: user.id, email, ek: encryptionKey });
+  const token = await signSessionToken({
+    sub: user.id,
+    email,
+    ek: encryptionKey,
+  });
   return withSuccess(req, token);
 }

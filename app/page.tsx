@@ -37,6 +37,7 @@ export default function Home() {
   const [draft, setDraft] = useState<EntryDraft>(emptyDraft);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [copyFlag, setCopyFlag] = useState<{ id: Entry["id"]; at: string } | null>(null);
 
   const router = useRouter();
 
@@ -68,6 +69,45 @@ export default function Home() {
     loadEntries();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!copyFlag) return;
+    const { id, at } = copyFlag;
+
+    setEntries((prev) =>
+      prev.map((entry) =>
+        entry.id === id ? { ...entry, last_copied: at } : entry,
+      ),
+    );
+
+    const syncLastCopied = async () => {
+      try {
+        const res = await fetch(`/api/entries/${id}/copied`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ last_copied: at }),
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("db");
+        const data = (await res.json()) as {
+          entry?: { id: Entry["id"]; last_copied: string | null };
+        };
+        const serverValue = data.entry?.last_copied ?? at;
+        if (serverValue !== at) {
+          setEntries((prev) =>
+            prev.map((entry) =>
+              entry.id === id ? { ...entry, last_copied: serverValue } : entry,
+            ),
+          );
+        }
+      } catch {
+        setNotice("Error al registrar la copia.");
+      }
+    };
+
+    void syncLastCopied();
+    setCopyFlag(null);
+  }, [copyFlag]);
 
   const loadEntries = async (): Promise<boolean> => {
     setLoading(true);
@@ -230,13 +270,21 @@ export default function Home() {
     setNotice("Entrada eliminada.");
   };
 
-  const handleCopy = async (text: string, label: string) => {
+  const handleCopy = async (text: string, label: string, entryId: Entry["id"]) => {
     try {
       await navigator.clipboard.writeText(text);
       setNotice(`${label} copiado.`);
+      setCopyFlag({ id: entryId, at: new Date().toISOString() });
     } catch {
       setNotice("No se pudo copiar.");
     }
+  };
+
+  const formatLastCopied = (value: string | null) => {
+    if (!value) return "Sin copiar";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return "Sin copiar";
+    return parsed.toLocaleString();
   };
 
   // Show loading state while checking authentication
@@ -410,7 +458,7 @@ export default function Home() {
                      {activeEntry.usuario}
                    </a>
                    <button
-                     onClick={() => handleCopy(activeEntry.usuario, "Link")}
+                     onClick={() => handleCopy(activeEntry.usuario, "Link", activeEntry.id)}
                      className="text-gray-400 hover:text-gray-600"
                      title="Copiar"
                    >
@@ -438,13 +486,20 @@ export default function Home() {
                       )}
                     </button>
                     <button
-                      onClick={() => handleCopy(activeEntry.contrasena, "Contraseña")}
+                      onClick={() => handleCopy(activeEntry.contrasena, "Contraseña", activeEntry.id)}
                       className="text-gray-400 hover:text-gray-600"
                       title="Copiar"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2-2v1"></path></svg>
                     </button>
                   </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wider text-gray-500">Última copia</label>
+                <div className="mt-1 rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                  {formatLastCopied(activeEntry.last_copied)}
                 </div>
               </div>
             </div>

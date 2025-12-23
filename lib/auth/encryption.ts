@@ -5,10 +5,9 @@ import { gcm } from "@noble/ciphers/aes.js";
 import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 
-const salt: Buffer = Buffer.from("bau.pessa@gmail.com");
 // ----------------------------- Argon2 hash ------------------------------------------------
 //
-export async function hash(password: string) {
+export async function hash(password: string, salt: Buffer) {
   return await argon2.hash(password, {
     type: argon2.argon2id,
     salt: salt,
