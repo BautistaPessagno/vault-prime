@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { Suspense, useState, type FormEvent } from "react";
 
 const signupMessages: Record<string, string> = {
   missing: "Enter an email and password to create your account.",
@@ -13,6 +13,26 @@ const signupMessages: Record<string, string> = {
 };
 
 export default function SignupPage() {
+  return (
+    <Suspense fallback={<SignupFallback />}>
+      <SignupContent />
+    </Suspense>
+  );
+}
+
+function SignupFallback() {
+  return (
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#e0f2fe,_transparent_55%),_radial-gradient(circle_at_bottom,_#fef3c7,_transparent_45%)] font-sans text-foreground">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-xl flex-col justify-center gap-10 px-6 py-12 md:py-20">
+        <div className="text-center">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-amber-400 border-t-transparent"></div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function SignupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

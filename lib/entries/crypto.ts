@@ -13,7 +13,7 @@ export type EntryRow = {
   created_at: string;
   nombre: string;
   usuario: string;
-  contraseña: string;
+  password: string;
   last_edited: string | null;
   last_copied: string | null;
 };
@@ -25,7 +25,7 @@ export type EntryInput = {
   password: string;
 };
 
-type DbEntryFields = Pick<EntryRow, "nombre" | "usuario" | "contraseña">;
+type DbEntryFields = Pick<EntryRow, "nombre" | "usuario" | "password">;
 
 type SessionData = {
   userId: string;
@@ -74,21 +74,21 @@ export async function getSessionEncryptionKey() {
   return session?.encryptionKey ?? null;
 }
 
-// Encrypt fields for database storage (input uses password, output uses contraseña)
+// Encrypt fields for database storage
 export async function encryptEntryFields(fields: EntryInput, key: string): Promise<DbEntryFields> {
   return {
     nombre: await encryptValue(fields.nombre, key),
     usuario: await encryptValue(fields.usuario, key),
-    contraseña: await encryptValue(fields.password, key),
+    password: await encryptValue(fields.password, key),
   };
 }
 
-// Decrypt fields from database (input uses contraseña, output uses password for frontend)
+// Decrypt fields from database
 export async function decryptEntryFields(fields: DbEntryFields, key: string): Promise<EntryInput> {
   return {
     nombre: await decryptValue(fields.nombre, key),
     usuario: await decryptValue(fields.usuario, key),
-    password: await decryptValue(fields.contraseña, key),
+    password: await decryptValue(fields.password, key),
   };
 }
 

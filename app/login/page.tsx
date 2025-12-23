@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 
 const loginMessages: Record<string, string> = {
   missing: "Enter both email and password to continue.",
@@ -16,6 +16,26 @@ const loginSuccess: Record<string, string> = {
 };
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginFallback />}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginFallback() {
+  return (
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#e0f2fe,_transparent_55%),_radial-gradient(circle_at_bottom,_#fef3c7,_transparent_45%)] font-sans text-foreground">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-xl flex-col justify-center gap-10 px-6 py-12 md:py-20">
+        <div className="text-center">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-sky-600 border-t-transparent"></div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
