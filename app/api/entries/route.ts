@@ -77,7 +77,7 @@ export async function POST(req: Request) {
     typeof body?.last_copied === "string" ? body.last_copied : null;
 
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+  const { data: entryData, error } = await supabase
     .from("entries")
     .insert({
       user_id: userIdForQuery,
@@ -87,16 +87,17 @@ export async function POST(req: Request) {
     })
     .select(entrySelect)
     .single();
+  const entryRow = entryData as EntryRow | null;
 
-  if (error || !data) {
+  if (error || !entryRow) {
     console.error("[Entries POST] Database error:", error);
     return NextResponse.json({ error: "db" }, { status: 500 });
   }
 
   try {
     const entry = {
-      ...data,
-      ...(await decryptEntryFields(data, encryptionKey)),
+      ...entryRow,
+      ...(await decryptEntryFields(entryRow, encryptionKey)),
     };
     return NextResponse.json({ entry }, { status: 201 });
   } catch (decryptError) {

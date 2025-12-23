@@ -54,23 +54,24 @@ export async function PUT(req: Request, context: RouteContext) {
   }
 
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+  const { data: entryData, error } = await supabase
     .from("entries")
     .update(updates)
     .eq("id", id)
     .eq("user_id", userIdForQuery)
     .select(entrySelect)
     .maybeSingle();
+  const entryRow = entryData as EntryRow | null;
 
-  if (error || !data) {
+  if (error || !entryRow) {
     console.error("[Entries PUT] Database error:", error);
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
   try {
     const entry = {
-      ...data,
-      ...(await decryptEntryFields(data, encryptionKey)),
+      ...entryRow,
+      ...(await decryptEntryFields(entryRow, encryptionKey)),
     };
     return NextResponse.json({ entry });
   } catch (decryptError) {
