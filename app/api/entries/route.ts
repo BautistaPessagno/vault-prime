@@ -8,7 +8,7 @@ import {
 } from "@/lib/entries/crypto";
 
 const entrySelect =
-  "id, user_id, created_at, nombre, usuario, contraseña, last_edited, last_copied";
+  'id, user_id, created_at, nombre, usuario, "contraseña", last_edited, last_copied';
 
 export async function GET() {
   const session = await getSessionData();
