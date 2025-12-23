@@ -21,11 +21,12 @@ export async function GET() {
   const userIdForQuery = /^\d+$/.test(userId) ? parseInt(userId, 10) : userId;
 
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+  const { data: entriesData, error } = await supabase
     .from("entries")
     .select(entrySelect)
     .eq("user_id", userIdForQuery)
     .order("created_at", { ascending: false });
+  const entryRows = (entriesData ?? []) as EntryRow[];
 
   if (error) {
     console.error("[Entries] Database error:", error);
@@ -34,7 +35,7 @@ export async function GET() {
 
   try {
     const entries = await Promise.all(
-      (data ?? []).map(async (entry: EntryRow) => ({
+      entryRows.map(async (entry) => ({
         ...entry,
         ...(await decryptEntryFields(entry, encryptionKey)),
       })),
