@@ -41,7 +41,7 @@ export default function Home() {
 
   const router = useRouter();
 
-  const activeEntry = entries.find((entry) => entry.id === activeId) ?? null;
+  const activeEntry = entries.find((entry) => String(entry.id) === activeId) ?? null;
 
   const filteredEntries = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -339,7 +339,7 @@ export default function Home() {
                       setIsEditing(false);
                     }}
                     className={`block w-full px-4 py-3 text-left hover:bg-gray-100 ${
-                      activeId === entry.id ? "bg-teal-50 border-l-4 border-teal-600" : ""
+                      activeId === String(entry.id) ? "bg-teal-50 border-l-4 border-teal-600" : ""
                     }`}
                   >
                     <p className="font-medium text-gray-900 truncate">{entry.nombre}</p>
