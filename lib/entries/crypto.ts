@@ -18,11 +18,11 @@ export type EntryRow = {
   last_copied: string | null;
 };
 
-// API input/output type (uses contrasena without ñ for easier frontend handling)
+// API input/output type (uses password without ñ for easier frontend handling)
 export type EntryInput = {
   nombre: string;
   usuario: string;
-  contrasena: string;
+  password: string;
 };
 
 type DbEntryFields = Pick<EntryRow, "nombre" | "usuario" | "contraseña">;
@@ -74,21 +74,21 @@ export async function getSessionEncryptionKey() {
   return session?.encryptionKey ?? null;
 }
 
-// Encrypt fields for database storage (input uses contrasena, output uses contraseña)
+// Encrypt fields for database storage (input uses password, output uses contraseña)
 export async function encryptEntryFields(fields: EntryInput, key: string): Promise<DbEntryFields> {
   return {
     nombre: await encryptValue(fields.nombre, key),
     usuario: await encryptValue(fields.usuario, key),
-    contraseña: await encryptValue(fields.contrasena, key),
+    contraseña: await encryptValue(fields.password, key),
   };
 }
 
-// Decrypt fields from database (input uses contraseña, output uses contrasena for frontend)
+// Decrypt fields from database (input uses contraseña, output uses password for frontend)
 export async function decryptEntryFields(fields: DbEntryFields, key: string): Promise<EntryInput> {
   return {
     nombre: await decryptValue(fields.nombre, key),
     usuario: await decryptValue(fields.usuario, key),
-    contrasena: await decryptValue(fields.contraseña, key),
+    password: await decryptValue(fields.contraseña, key),
   };
 }
 

@@ -31,13 +31,13 @@ export async function PUT(req: Request, context: RouteContext) {
 
   const nombre = String(body?.nombre ?? "").trim();
   const usuario = String(body?.usuario ?? "").trim();
-  const contrasena = String(body?.contrasena ?? "");
-  if (!nombre || !contrasena) {
+  const password = String(body?.password ?? "");
+  if (!nombre || !password) {
     return NextResponse.json({ error: "missing_fields" }, { status: 400 });
   }
 
   const encryptedFields = await encryptEntryFields(
-    { nombre, usuario, contrasena },
+    { nombre, usuario, password },
     encryptionKey,
   );
 

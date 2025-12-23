@@ -9,7 +9,7 @@ type Entry = {
   created_at: string;
   nombre: string;
   usuario: string; // Used as Link/Username
-  contrasena: string;
+  password: string;
   last_edited: string | null;
   last_copied: string | null;
 };
@@ -17,13 +17,13 @@ type Entry = {
 type EntryDraft = {
   nombre: string;
   usuario: string;
-  contrasena: string;
+  password: string;
 };
 
 const emptyDraft: EntryDraft = {
   nombre: "",
   usuario: "",
-  contrasena: "",
+  password: "",
 };
 
 export default function Home() {
@@ -166,7 +166,7 @@ export default function Home() {
     setDraft({
       nombre: activeEntry.nombre,
       usuario: activeEntry.usuario,
-      contrasena: activeEntry.contrasena,
+      password: activeEntry.password,
     });
   };
 
@@ -177,7 +177,7 @@ export default function Home() {
   };
 
   const persistEntry = async (
-    entry: Partial<Entry> & { nombre: string; usuario: string; contrasena: string },
+    entry: Partial<Entry> & { nombre: string; usuario: string; password: string },
     mode: "create" | "update" | "delete",
   ): Promise<Entry | null> => {
     try {
@@ -189,7 +189,7 @@ export default function Home() {
           : {
               nombre: entry.nombre,
               usuario: entry.usuario,
-              contrasena: entry.contrasena,
+              password: entry.password,
               last_edited: entry.last_edited,
               last_copied: entry.last_copied,
             };
@@ -214,7 +214,7 @@ export default function Home() {
 
   const handleSave = async (event: FormEvent) => {
     event.preventDefault();
-    if (!draft.nombre.trim() || !draft.contrasena) {
+    if (!draft.nombre.trim() || !draft.password) {
       setNotice("Nombre y contraseña son requeridos.");
       return;
     }
@@ -225,7 +225,7 @@ export default function Home() {
       const newEntryData = {
         nombre: draft.nombre.trim(),
         usuario: draft.usuario.trim(),
-        contrasena: draft.contrasena,
+        password: draft.password,
         last_edited: now,
         last_copied: null,
       };
@@ -235,7 +235,7 @@ export default function Home() {
       const createdEntry = await persistEntry(newEntryData, "create");
       if (createdEntry) {
         setEntries((prev) => [createdEntry, ...prev]);
-        setActiveId(createdEntry.id);
+        setActiveId(String(createdEntry.id));
         setNotice("Entrada creada.");
       }
     } else if (isEditing && activeEntry) {
@@ -243,7 +243,7 @@ export default function Home() {
         ...activeEntry,
         nombre: draft.nombre.trim(),
         usuario: draft.usuario.trim(),
-        contrasena: draft.contrasena,
+        password: draft.password,
         last_edited: now,
       };
       setIsEditing(false);
@@ -334,7 +334,7 @@ export default function Home() {
                 <li key={entry.id}>
                   <button
                     onClick={() => {
-                      setActiveId(entry.id);
+                      setActiveId(String(entry.id));
                       setIsCreating(false);
                       setIsEditing(false);
                     }}
@@ -400,13 +400,13 @@ export default function Home() {
                 <div className="relative mt-1">
                   <input
                     type="text"
-                    value={draft.contrasena}
-                    onChange={(e) => setDraft({ ...draft, contrasena: e.target.value })}
+                    value={draft.password}
+                    onChange={(e) => setDraft({ ...draft, password: e.target.value })}
                     className="block w-full rounded-md border border-gray-300 px-3 py-2 pr-10 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500"
                   />
                   <button
                      type="button"
-                     onClick={() => setDraft({ ...draft, contrasena: Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10) })}
+                     onClick={() => setDraft({ ...draft, password: Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10) })}
                      className="absolute right-2 top-2 text-xs text-teal-600 hover:text-teal-800"
                   >
                     Generar
@@ -471,7 +471,7 @@ export default function Home() {
                 <label className="text-xs font-semibold uppercase tracking-wider text-gray-500">Contraseña</label>
                 <div className="mt-1 flex items-center justify-between rounded-md bg-gray-50 px-3 py-2">
                   <span className="font-mono text-gray-900 truncate mr-2">
-                    {showPassword ? activeEntry.contrasena : "••••••••••••••••"}
+                    {showPassword ? activeEntry.password : "••••••••••••••••"}
                   </span>
                   <div className="flex gap-2">
                     <button
@@ -486,7 +486,7 @@ export default function Home() {
                       )}
                     </button>
                     <button
-                      onClick={() => handleCopy(activeEntry.contrasena, "Contraseña", activeEntry.id)}
+                      onClick={() => handleCopy(activeEntry.password, "Contraseña", activeEntry.id)}
                       className="text-gray-400 hover:text-gray-600"
                       title="Copiar"
                     >
