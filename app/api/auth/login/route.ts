@@ -8,6 +8,11 @@ type Credentials = {
   password: string;
 };
 
+type LoginUserRow = {
+  id: string;
+  master_password_hash: string | null;
+};
+
 function normalizeEmail(value: FormDataEntryValue | string | null) {
   return String(value ?? "")
     .trim()
@@ -75,11 +80,12 @@ export async function POST(req: Request) {
   }
 
   const supabase = createAdminClient();
-  const { data: user, error } = await supabase
+  const { data: userData, error } = await supabase
     .from("users")
     .select("id, master_password_hash")
     .eq("email", email)
     .maybeSingle();
+  const user = userData as LoginUserRow | null;
 
   if (error || !user || !user.master_password_hash) {
     return withError(req, "invalid", 401);
