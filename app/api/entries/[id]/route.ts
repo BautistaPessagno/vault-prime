@@ -8,7 +8,7 @@ import {
 } from "@/lib/entries/crypto";
 
 const entrySelect =
-  'id, user_id, created_at, nombre, usuario, "contraseña", last_edited, last_copied';
+  'id, user_id, created_at, nombre, usuario, "password", last_edited, last_copied';
 
 type RouteContext = {
   params: Promise<{
@@ -82,7 +82,7 @@ export async function PUT(req: Request, context: RouteContext) {
 
 export async function DELETE(_req: Request, context: RouteContext) {
   const { id } = await context.params;
-  
+
   const session = await getSessionData();
   if (!session) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });

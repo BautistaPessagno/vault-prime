@@ -1,12 +1,7 @@
 import { cookies } from "next/headers";
 import { verifySessionToken } from "@/lib/auth/jwt";
-import {
-  generateNonce,
-  encrypt,
-  decrypt,
-} from "@/lib/auth/encryption";
+import { generateNonce, encrypt, decrypt } from "@/lib/auth/encryption";
 
-// Database row type (uses contraseña with ñ)
 export type EntryRow = {
   id: string;
   user_id: string;
@@ -18,7 +13,7 @@ export type EntryRow = {
   last_copied: string | null;
 };
 
-// API input/output type (uses password without ñ for easier frontend handling)
+// API input/output type
 export type EntryInput = {
   nombre: string;
   usuario: string;
@@ -41,22 +36,22 @@ export async function getSessionData(): Promise<SessionData> {
   }
   try {
     const payload = await verifySessionToken(token);
-    
+
     // Handle both string and number user IDs
     const userId = payload.sub != null ? String(payload.sub) : null;
     const encryptionKey = typeof payload.ek === "string" ? payload.ek : null;
-    
+
     if (!userId) {
       console.log("[Auth] Missing userId in session");
       return null;
     }
-    
+
     if (!encryptionKey) {
       // Old token format without encryption key - user needs to re-login
       console.log("[Auth] Session missing encryption key - requires re-login");
       return null;
     }
-    
+
     return { userId, encryptionKey };
   } catch (error) {
     console.error("[Auth] Token verification failed:", error);
@@ -75,7 +70,10 @@ export async function getSessionEncryptionKey() {
 }
 
 // Encrypt fields for database storage
-export async function encryptEntryFields(fields: EntryInput, key: string): Promise<DbEntryFields> {
+export async function encryptEntryFields(
+  fields: EntryInput,
+  key: string,
+): Promise<DbEntryFields> {
   return {
     nombre: await encryptValue(fields.nombre, key),
     usuario: await encryptValue(fields.usuario, key),
@@ -84,7 +82,10 @@ export async function encryptEntryFields(fields: EntryInput, key: string): Promi
 }
 
 // Decrypt fields from database
-export async function decryptEntryFields(fields: DbEntryFields, key: string): Promise<EntryInput> {
+export async function decryptEntryFields(
+  fields: DbEntryFields,
+  key: string,
+): Promise<EntryInput> {
   return {
     nombre: await decryptValue(fields.nombre, key),
     usuario: await decryptValue(fields.usuario, key),

@@ -26,7 +26,7 @@ export async function signSessionToken(payload: JWTPayload) {
     .setIssuedAt()
     .setIssuer(issuer)
     .setAudience(audience)
-    .setExpirationTime("7d")
+    .setExpirationTime("15m")
     .sign(secret);
 }
 
