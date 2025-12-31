@@ -15,6 +15,13 @@ export async function hash(password: string, salt?: Buffer) {
   });
 }
 
+export async function masterPasswordHash(masterKey: string) {
+  return argon2.hash(masterKey, {
+    type: argon2.argon2id,
+    memoryCost: 65536,
+  });
+}
+
 export async function verify(password: string, hashedPassword: string) {
   return await argon2.verify(hashedPassword, password);
 }
@@ -23,7 +30,7 @@ export async function verify(password: string, hashedPassword: string) {
 
 // este hash se va a usar como key para el aes-256-gcm
 //el payloead es el master key y el salt es la password
-export async function generateKey(payload: string, salt: string) {
+export async function deriveKey(payload: string, salt: string) {
   const enc = new TextEncoder();
   const k = hkdf(
     sha256,
@@ -35,29 +42,10 @@ export async function generateKey(payload: string, salt: string) {
   return bytesToHex(k);
 }
 
-export async function deriveKey(masterKey: string, password: string) {
-  return generateKey(masterKey, password);
-}
-
-export async function masterPasswordHash(masterKey: string) {
-  return argon2.hash(masterKey, {
-    type: argon2.argon2id,
-    memoryCost: 65536,
-  });
-}
-
 // ----------------------------- aes-256-gcm key ------------------------------------------------
 
-export async function generateSalt() {
-  return bytesToHex(randomBytes(32));
-}
-
-export async function generateIv() {
-  return bytesToHex(randomBytes(24));
-}
-
 export async function generateNonce() {
-  return generateIv();
+  return bytesToHex(randomBytes(24));
 }
 
 export async function encrypt(key: string, nonce: string, data: string) {
