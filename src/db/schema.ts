@@ -1,7 +1,7 @@
-import { integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
   email: text("email").notNull().unique(),
   master_password_hash: text("master_password_hash").notNull(),
   created_at: timestamp("created_at", { withTimezone: true, mode: "string" })
@@ -10,8 +10,8 @@ export const usersTable = pgTable("users", {
 });
 
 export const entriesTable = pgTable("entries", {
-  id: serial("id").primaryKey(),
-  user_id: integer("user_id")
+  id: uuid("id").defaultRandom().primaryKey(),
+  user_id: uuid("user_id")
     .notNull()
     .references(() => usersTable.id, { onDelete: "cascade" }),
   nombre: text("name").notNull(),
