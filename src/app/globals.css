@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8f8ff;
+  --foreground: #0b132b;
+  --card: #ffffff;
+  --border: #d9e2ef;
+  --muted: #eef3fb;
+  --muted-foreground: #4a5a73;
+  --accent: #00f0ff;
+  --danger: #ff4d4d;
+  --success: #00c853;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --font-sans: var(--font-space-grotesk);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0b132b;
+    --foreground: #f8f8ff;
+    --card: #111a33;
+    --border: #24304a;
+    --muted: #0f1a33;
+    --muted-foreground: #b3c0d8;
+    --accent: #00f0ff;
+    --danger: #ff4d4d;
+    --success: #00c853;
+  }
+}
+
+body {
+  min-height: 100%;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), "Space Grotesk", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}

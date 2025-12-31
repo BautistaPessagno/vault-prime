@@ -1,0 +1,158 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState, type FormEvent } from "react";
+
+const signupMessages: Record<string, string> = {
+  missing: "Enter an email and password to create your account.",
+  exists: "That email already has an account.",
+  db: "We could not reach the database. Try again soon.",
+  insert: "We could not create your account. Try again.",
+  unexpected: "Something went wrong. Please try again.",
+};
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<SignupFallback />}>
+      <SignupContent />
+    </Suspense>
+  );
+}
+
+function SignupFallback() {
+  return (
+    <main className="min-h-screen bg-[color:var(--background)] text-[color:var(--foreground)]">
+      <div className="flex min-h-screen items-center justify-center px-6">
+        <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] px-8 py-6 text-center">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[color:var(--accent)] border-t-transparent"></div>
+          <p className="mt-4 text-sm text-[color:var(--muted-foreground)]">Cargando...</p>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function SignupContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const errorFromUrl = searchParams.get("error");
+  const resolvedError =
+    errorMessage ?? (errorFromUrl ? signupMessages[errorFromUrl] : null);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setErrorMessage(null);
+    setIsSubmitting(true);
+
+    const formData = new FormData(event.currentTarget);
+    const email = String(formData.get("email") ?? "");
+    const password = String(formData.get("password") ?? "");
+
+    try {
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
+      });
+
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      };
+
+      if (!response.ok) {
+        setErrorMessage(
+          signupMessages[payload.error ?? "unexpected"] ??
+            signupMessages.unexpected,
+        );
+        return;
+      }
+
+      // Signup now automatically logs the user in with the session
+      router.push("/");
+    } catch {
+      setErrorMessage(signupMessages.unexpected);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <main className="min-h-screen bg-[color:var(--background)] text-[color:var(--foreground)]">
+      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-6 py-12">
+        <header className="mb-8 space-y-3 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.4em] text-[color:var(--muted-foreground)]">
+            Vault Prime
+          </p>
+          <h1 className="text-3xl font-semibold">Crea tu cuenta</h1>
+          <p className="text-sm text-[color:var(--muted-foreground)]">
+            Configura tu vault en segundos.
+          </p>
+        </header>
+
+        <section className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-6">
+          {resolvedError && (
+            <div className="mb-6 rounded-xl border border-[color:var(--danger)] px-4 py-3 text-sm text-[color:var(--danger)]">
+              {resolvedError}
+            </div>
+          )}
+          <div className="mb-6 space-y-2">
+            <h2 className="text-2xl font-semibold">Create account</h2>
+            <p className="text-sm text-[color:var(--muted-foreground)]">
+              Agrega tu email y una contrasena segura.
+            </p>
+          </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
+                Email
+              </label>
+              <input
+                name="email"
+                type="email"
+                placeholder="alex@vaultprime.com"
+                autoComplete="email"
+                className="w-full rounded-xl border border-[color:var(--border)] bg-transparent px-4 py-3 text-sm outline-none transition focus:border-[color:var(--accent)]"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
+                Password
+              </label>
+              <input
+                name="password"
+                type="password"
+                placeholder="Create a password"
+                autoComplete="new-password"
+                className="w-full rounded-xl border border-[color:var(--border)] bg-transparent px-4 py-3 text-sm outline-none transition focus:border-[color:var(--accent)]"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full rounded-xl bg-[color:var(--accent)] px-4 py-3 text-sm font-semibold text-[color:var(--foreground)] transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {isSubmitting ? "Creating..." : "Create account"}
+            </button>
+          </form>
+          <p className="mt-6 text-center text-sm text-[color:var(--muted-foreground)]">
+            Already have an account?{" "}
+            <Link
+              href="/login"
+              className="font-semibold text-[color:var(--foreground)] transition hover:text-[color:var(--accent)]"
+            >
+              Sign in
+            </Link>
+          </p>
+        </section>
+      </div>
+    </main>
+  );
+}
