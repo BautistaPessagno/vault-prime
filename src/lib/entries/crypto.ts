@@ -8,7 +8,7 @@ export type EntryRow = {
   nombre: string;
   usuario: string;
   password: string;
-  url: string | null;
+  url: string;
   last_edited: string | null;
   last_copied: string | null;
 };
@@ -92,7 +92,7 @@ export async function decryptEntryFields(
     nombre: await decryptValue(fields.nombre, key),
     usuario: await decryptValue(fields.usuario, key),
     password: await decryptValue(fields.password, key),
-    url: await decryptValue(fields.url ?? "", key),
+    url: await decryptValue(fields.url, key),
   };
 }
 
