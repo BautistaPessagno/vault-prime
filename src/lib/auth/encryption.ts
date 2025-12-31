@@ -7,10 +7,11 @@ import { sha256 } from "@noble/hashes/sha2.js";
 
 // ----------------------------- Argon2 hash ------------------------------------------------
 //
-export async function hash(password: string) {
+export async function hash(password: string, salt?: Uint8Array) {
   return await argon2.hash(password, {
     type: argon2.argon2id,
     memoryCost: 65536, // 64 MiB
+    ...(salt ? { salt } : null),
   });
 }
 
@@ -34,6 +35,17 @@ export async function generateKey(payload: string, salt: string) {
   return bytesToHex(k);
 }
 
+export async function deriveKey(masterKey: string, password: string) {
+  return generateKey(masterKey, password);
+}
+
+export async function masterPasswordHash(masterKey: string) {
+  return argon2.hash(masterKey, {
+    type: argon2.argon2id,
+    memoryCost: 65536,
+  });
+}
+
 // ----------------------------- aes-256-gcm key ------------------------------------------------
 
 export async function generateSalt() {
@@ -42,6 +54,10 @@ export async function generateSalt() {
 
 export async function generateIv() {
   return bytesToHex(randomBytes(24));
+}
+
+export async function generateNonce() {
+  return generateIv();
 }
 
 export async function encrypt(key: string, nonce: string, data: string) {
