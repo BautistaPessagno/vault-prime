@@ -18,12 +18,12 @@ export async function POST(req: Request, context: RouteContext) {
   }
 
   const { userId } = session;
-  const userIdForQuery = Number.parseInt(userId, 10);
-  if (!Number.isFinite(userIdForQuery)) {
+  if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  const entryId = Number.parseInt(id, 10);
-  if (!Number.isFinite(entryId)) {
+  const userIdForQuery = userId;
+  const entryId = id;
+  if (!entryId) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 

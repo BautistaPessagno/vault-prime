@@ -16,10 +16,10 @@ export async function GET() {
   }
 
   const { userId, encryptionKey } = session;
-  const userIdForQuery = Number.parseInt(userId, 10);
-  if (!Number.isFinite(userIdForQuery)) {
+  if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  const userIdForQuery = userId;
 
   let entryRows: EntryRow[] = [];
   try {
@@ -63,10 +63,10 @@ export async function POST(req: Request) {
   }
 
   const { userId, encryptionKey } = session;
-  const userIdForQuery = Number.parseInt(userId, 10);
-  if (!Number.isFinite(userIdForQuery)) {
+  if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  const userIdForQuery = userId;
 
   const body = await req.json().catch(() => null);
 

@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type Entry = {
-  id: string | number;
-  user_id: string | number | null;
+  id: string;
+  user_id: string | null;
   nombre: string;
   usuario: string;
   url: string;

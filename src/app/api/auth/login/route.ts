@@ -11,7 +11,7 @@ type Credentials = {
 };
 
 type LoginUserRow = {
-  id: number;
+  id: string;
   master_password_hash: string;
 };
 

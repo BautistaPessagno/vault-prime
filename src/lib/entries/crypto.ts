@@ -3,8 +3,8 @@ import { verifySessionToken } from "@/src/lib/auth/jwt";
 import { generateNonce, encrypt, decrypt } from "@/src/lib/auth/encryption";
 
 export type EntryRow = {
-  id: string | number;
-  user_id: string | number;
+  id: string;
+  user_id: string;
   nombre: string;
   usuario: string;
   password: string;

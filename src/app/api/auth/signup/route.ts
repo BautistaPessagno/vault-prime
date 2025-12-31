@@ -76,7 +76,7 @@ export async function POST(req: Request) {
     return withError(req, "missing", 400);
   }
 
-  let existingId: number | undefined;
+  let existingId: string | undefined;
   try {
     const existing = await db
       .select({ id: usersTable.id })
@@ -97,7 +97,7 @@ export async function POST(req: Request) {
   const masterKey = await hash(password, salt);
   const masterPasswordHashValue = await masterPasswordHash(masterKey);
 
-  let createdUserId: number | undefined;
+  let createdUserId: string | undefined;
   try {
     const created = await db
       .insert(usersTable)
