@@ -7,7 +7,7 @@ import { sha256 } from "@noble/hashes/sha2.js";
 
 // ----------------------------- Argon2 hash ------------------------------------------------
 //
-export async function hash(password: string, salt?: Uint8Array) {
+export async function hash(password: string, salt?: Buffer) {
   return await argon2.hash(password, {
     type: argon2.argon2id,
     memoryCost: 65536, // 64 MiB
