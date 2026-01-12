@@ -603,7 +603,7 @@ export default function Home() {
                           }
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="truncate text-sm font-semibold text-[color:var(--accent)]"
+                          className="truncate text-sm font-semibold text-[color:var(--link)]"
                         >
                           {activeEntry.url}
                         </a>
