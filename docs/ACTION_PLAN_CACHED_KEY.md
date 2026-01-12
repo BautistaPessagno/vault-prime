@@ -262,24 +262,6 @@ Test cases:
 
 ---
 
-### Phase 8: Migration Strategy
-
-#### Step 8.1: Backward Compatibility (Temporary)
-During migration, support both old (`ek`) and new (`sid`) formats:
-
-```typescript
-// In getSessionData():
-const encryptionKey = typeof payload.ek === "string"
-  ? payload.ek  // Old format - direct key
-  : await keyCache.get(payload.sid);  // New format - cached key
-```
-
-#### Step 8.2: Forced Re-login
-After deployment, existing tokens with `ek` will still work temporarily.
-Set a deadline to remove backward compatibility and force re-login.
-
----
-
 ## File Changes Summary
 
 | File | Action | Description |
@@ -344,7 +326,6 @@ If issues arise after deployment:
 | Phase 5 | Session refresh (optional) |
 | Phase 6 | Configuration (2 files) |
 | Phase 7 | Testing |
-| Phase 8 | Migration |
 
 ---
 
