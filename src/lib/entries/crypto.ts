@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { verifySessionToken } from "@/src/lib/auth/jwt";
 import { generateNonce, encrypt, decrypt } from "@/src/lib/auth/encryption";
+import { getKeyCache } from "@/src/lib/cache";
 
 export type EntryRow = {
   id: string;
@@ -40,16 +41,24 @@ export async function getSessionData(): Promise<SessionData> {
 
     // Handle both string and number user IDs
     const userId = payload.sub != null ? String(payload.sub) : null;
-    const encryptionKey = typeof payload.ek === "string" ? payload.ek : null;
+    const sessionId = typeof payload.sid === "string" ? payload.sid : null;
 
     if (!userId) {
       console.log("[Auth] Missing userId in session");
       return null;
     }
 
+    if (!sessionId) {
+      console.log("[Auth] Session missing session ID - requires re-login");
+      return null;
+    }
+
+    // Retrieve encryption key from cache
+    const keyCache = getKeyCache();
+    const encryptionKey = await keyCache.get(sessionId);
+
     if (!encryptionKey) {
-      // Old token format without encryption key - user needs to re-login
-      console.log("[Auth] Session missing encryption key - requires re-login");
+      console.log("[Auth] Session key expired - requires re-login");
       return null;
     }
 

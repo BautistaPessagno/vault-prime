@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { hash, masterPasswordHash, deriveKey } from "@/src/lib/auth/encryption";
 import { signSessionToken } from "@/src/lib/auth/jwt";
+import { generateSessionId } from "@/src/lib/auth/session";
+import { getKeyCache, CACHE_CONFIG } from "@/src/lib/cache";
 import { db } from "@/src/db";
 import { usersTable } from "@/src/db/schema";
 
@@ -116,12 +118,16 @@ export async function POST(req: Request) {
     return withError(req, "insert", 500);
   }
 
-  // Derive encryption key for entries and include it in the session
+  // Derive encryption key and store in cache
   const encryptionKey = await deriveKey(masterKey, password);
+  const sessionId = generateSessionId();
+  const keyCache = getKeyCache();
+  await keyCache.set(sessionId, encryptionKey, CACHE_CONFIG.ttlSeconds);
+
   const token = await signSessionToken({
     sub: String(createdUserId),
     email,
-    ek: encryptionKey,
+    sid: sessionId,
   });
   return withSuccess(req, token);
 }

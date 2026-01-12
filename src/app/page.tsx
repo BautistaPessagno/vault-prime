@@ -39,11 +39,15 @@ export default function Home() {
   const [draft, setDraft] = useState<EntryDraft>(emptyDraft);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [copyFlag, setCopyFlag] = useState<{ id: Entry["id"]; at: string } | null>(null);
+  const [copyFlag, setCopyFlag] = useState<{
+    id: Entry["id"];
+    at: string;
+  } | null>(null);
 
   const router = useRouter();
 
-  const activeEntry = entries.find((entry) => String(entry.id) === activeId) ?? null;
+  const activeEntry =
+    entries.find((entry) => String(entry.id) === activeId) ?? null;
 
   const filteredEntries = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -141,7 +145,10 @@ export default function Home() {
     if (isLoggingOut) return;
     setIsLoggingOut(true);
     try {
-      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
     } finally {
       setEntries([]);
       setActiveId(null);
@@ -189,7 +196,8 @@ export default function Home() {
     mode: "create" | "update" | "delete",
   ): Promise<Entry | null> => {
     try {
-      const url = mode === "create" ? "/api/entries" : `/api/entries/${entry.id}`;
+      const url =
+        mode === "create" ? "/api/entries" : `/api/entries/${entry.id}`;
       const payload =
         mode === "delete"
           ? null
@@ -202,7 +210,8 @@ export default function Home() {
               last_copied: entry.last_copied,
             };
       const res = await fetch(url, {
-        method: mode === "create" ? "POST" : mode === "delete" ? "DELETE" : "PUT",
+        method:
+          mode === "create" ? "POST" : mode === "delete" ? "DELETE" : "PUT",
         headers: payload ? { "Content-Type": "application/json" } : undefined,
         body: payload ? JSON.stringify(payload) : undefined,
         credentials: "include",
@@ -261,7 +270,9 @@ export default function Home() {
       const savedEntry = await persistEntry(updated, "update");
       if (savedEntry) {
         setEntries((prev) =>
-          prev.map((entry) => (entry.id === savedEntry.id ? savedEntry : entry)),
+          prev.map((entry) =>
+            entry.id === savedEntry.id ? savedEntry : entry,
+          ),
         );
         setNotice("Entrada actualizada.");
       }
@@ -279,7 +290,11 @@ export default function Home() {
     setNotice("Entrada eliminada.");
   };
 
-  const handleCopy = async (text: string, label: string, entryId: Entry["id"]) => {
+  const handleCopy = async (
+    text: string,
+    label: string,
+    entryId: Entry["id"],
+  ) => {
     try {
       await navigator.clipboard.writeText(text);
       setNotice(`${label} copiado.`);
@@ -327,7 +342,9 @@ export default function Home() {
         >
           <span
             className={`h-2 w-2 rounded-full ${
-              isErrorNotice ? "bg-[color:var(--danger)]" : "bg-[color:var(--success)]"
+              isErrorNotice
+                ? "bg-[color:var(--danger)]"
+                : "bg-[color:var(--success)]"
             }`}
           ></span>
           <span>{notice}</span>
@@ -420,7 +437,9 @@ export default function Home() {
                             : "border-transparent hover:border-[color:var(--border)]"
                         }`}
                       >
-                        <p className="text-sm font-semibold truncate">{entry.nombre}</p>
+                        <p className="text-sm font-semibold truncate">
+                          {entry.nombre}
+                        </p>
                         <p className="text-xs text-[color:var(--muted-foreground)] truncate">
                           {entry.url || "Sin link"}
                         </p>
@@ -447,9 +466,6 @@ export default function Home() {
                       Guarda credenciales con claridad.
                     </p>
                   </div>
-                  <span className="rounded-full border border-[color:var(--success)] px-3 py-1 text-xs font-semibold text-[color:var(--success)]">
-                    Cifrado
-                  </span>
                 </div>
                 <form onSubmit={handleSave} className="space-y-5">
                   <div className="grid gap-4 md:grid-cols-2">
@@ -460,7 +476,9 @@ export default function Home() {
                       <input
                         type="text"
                         value={draft.nombre}
-                        onChange={(e) => setDraft({ ...draft, nombre: e.target.value })}
+                        onChange={(e) =>
+                          setDraft({ ...draft, nombre: e.target.value })
+                        }
                         className="w-full rounded-xl border border-[color:var(--border)] bg-transparent px-4 py-3 text-sm outline-none transition focus:border-[color:var(--accent)]"
                         placeholder="Nombre del sitio"
                       />
@@ -472,7 +490,9 @@ export default function Home() {
                       <input
                         type="text"
                         value={draft.url}
-                        onChange={(e) => setDraft({ ...draft, url: e.target.value })}
+                        onChange={(e) =>
+                          setDraft({ ...draft, url: e.target.value })
+                        }
                         className="w-full rounded-xl border border-[color:var(--border)] bg-transparent px-4 py-3 text-sm outline-none transition focus:border-[color:var(--accent)]"
                         placeholder="https://ejemplo.com"
                       />
@@ -484,7 +504,9 @@ export default function Home() {
                       <input
                         type="text"
                         value={draft.usuario}
-                        onChange={(e) => setDraft({ ...draft, usuario: e.target.value })}
+                        onChange={(e) =>
+                          setDraft({ ...draft, usuario: e.target.value })
+                        }
                         className="w-full rounded-xl border border-[color:var(--border)] bg-transparent px-4 py-3 text-sm outline-none transition focus:border-[color:var(--accent)]"
                         placeholder="usuario@correo.com"
                       />
@@ -497,7 +519,9 @@ export default function Home() {
                         <input
                           type="text"
                           value={draft.password}
-                          onChange={(e) => setDraft({ ...draft, password: e.target.value })}
+                          onChange={(e) =>
+                            setDraft({ ...draft, password: e.target.value })
+                          }
                           className="w-full rounded-xl border border-[color:var(--border)] bg-transparent px-4 py-3 pr-24 text-sm outline-none transition focus:border-[color:var(--accent)]"
                         />
                         <button
@@ -541,15 +565,14 @@ export default function Home() {
                     <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
                       Entrada
                     </p>
-                    <h2 className="text-3xl font-semibold">{activeEntry.nombre}</h2>
+                    <h2 className="text-3xl font-semibold">
+                      {activeEntry.nombre}
+                    </h2>
                     <p className="text-sm text-[color:var(--muted-foreground)]">
                       {activeEntry.url || "Sin link"}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <span className="rounded-full border border-[color:var(--success)] px-3 py-1 text-xs font-semibold text-[color:var(--success)]">
-                      Cifrado
-                    </span>
                     <button
                       onClick={handleEdit}
                       className="rounded-full border border-[color:var(--border)] px-4 py-2 text-sm font-semibold transition hover:border-[color:var(--accent)]"
@@ -590,7 +613,9 @@ export default function Home() {
                         </span>
                       )}
                       <button
-                        onClick={() => handleCopy(activeEntry.url, "Link", activeEntry.id)}
+                        onClick={() =>
+                          handleCopy(activeEntry.url, "Link", activeEntry.id)
+                        }
                         className="rounded-full border border-[color:var(--border)] p-2 transition hover:border-[color:var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
                         title="Copiar"
                         disabled={!activeEntry.url}
@@ -606,7 +631,14 @@ export default function Home() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         >
-                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                          <rect
+                            x="9"
+                            y="9"
+                            width="13"
+                            height="13"
+                            rx="2"
+                            ry="2"
+                          ></rect>
                           <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                         </svg>
                       </button>
@@ -622,7 +654,13 @@ export default function Home() {
                         {activeEntry.usuario || "Sin usuario"}
                       </span>
                       <button
-                        onClick={() => handleCopy(activeEntry.usuario, "Usuario", activeEntry.id)}
+                        onClick={() =>
+                          handleCopy(
+                            activeEntry.usuario,
+                            "Usuario",
+                            activeEntry.id,
+                          )
+                        }
                         className="rounded-full border border-[color:var(--border)] p-2 transition hover:border-[color:var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
                         title="Copiar"
                         disabled={!activeEntry.usuario}
@@ -638,7 +676,14 @@ export default function Home() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         >
-                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                          <rect
+                            x="9"
+                            y="9"
+                            width="13"
+                            height="13"
+                            rx="2"
+                            ry="2"
+                          ></rect>
                           <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                         </svg>
                       </button>
@@ -651,7 +696,9 @@ export default function Home() {
                     </label>
                     <div className="mt-3 flex items-center justify-between gap-3">
                       <span className="truncate font-mono text-sm">
-                        {showPassword ? activeEntry.password : "••••••••••••••••"}
+                        {showPassword
+                          ? activeEntry.password
+                          : "••••••••••••••••"}
                       </span>
                       <div className="flex gap-2">
                         <button
@@ -692,7 +739,13 @@ export default function Home() {
                           )}
                         </button>
                         <button
-                          onClick={() => handleCopy(activeEntry.password, "Contrasena", activeEntry.id)}
+                          onClick={() =>
+                            handleCopy(
+                              activeEntry.password,
+                              "Contrasena",
+                              activeEntry.id,
+                            )
+                          }
                           className="rounded-full border border-[color:var(--border)] p-2 transition hover:border-[color:var(--accent)]"
                           title="Copiar"
                         >
@@ -707,7 +760,14 @@ export default function Home() {
                             strokeLinecap="round"
                             strokeLinejoin="round"
                           >
-                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <rect
+                              x="9"
+                              y="9"
+                              width="13"
+                              height="13"
+                              rx="2"
+                              ry="2"
+                            ></rect>
                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                           </svg>
                         </button>
@@ -739,7 +799,14 @@ export default function Home() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   >
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <rect
+                      x="3"
+                      y="11"
+                      width="18"
+                      height="11"
+                      rx="2"
+                      ry="2"
+                    ></rect>
                     <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                   </svg>
                 </div>
