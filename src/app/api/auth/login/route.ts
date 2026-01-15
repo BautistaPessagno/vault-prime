@@ -71,7 +71,7 @@ function withSuccess(request: Request, token: string) {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 15, // 15 minutes
+    maxAge: 1000 * 60 * 15, // 15 minutes
   });
 
   return response;
