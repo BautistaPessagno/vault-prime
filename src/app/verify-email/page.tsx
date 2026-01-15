@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState, FormEvent } from "react";
+import { Suspense, useState, FormEvent, useEffect, useRef, useCallback } from "react";
 
 export default function VerifyEmailPage() {
   return (
@@ -40,6 +40,9 @@ function VerifyEmailContent() {
     "idle" | "sending" | "sent" | "error"
   >("idle");
   const [resendMessage, setResendMessage] = useState<string | null>(null);
+
+  // Track if initial email was sent
+  const initialSendAttempted = useRef(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -95,7 +98,7 @@ function VerifyEmailContent() {
     }
   };
 
-  const handleResend = async () => {
+  const handleResend = useCallback(async () => {
     if (!email || resendStatus === "sending") return;
 
     setResendStatus("sending");
@@ -119,7 +122,15 @@ function VerifyEmailContent() {
       setResendStatus("error");
       setResendMessage("We couldn't resend right now. Please try again.");
     }
-  };
+  }, [email, resendStatus]);
+
+  // Auto-send verification email on mount
+  useEffect(() => {
+    if (email && !initialSendAttempted.current) {
+      initialSendAttempted.current = true;
+      handleResend();
+    }
+  }, [email, handleResend]);
 
   return (
     <main className="min-h-screen bg-[color:var(--background)] text-[color:var(--foreground)]">

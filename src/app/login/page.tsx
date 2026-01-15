@@ -30,7 +30,9 @@ function LoginFallback() {
       <div className="flex min-h-screen items-center justify-center px-6">
         <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] px-8 py-6 text-center">
           <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[color:var(--accent)] border-t-transparent"></div>
-          <p className="mt-4 text-sm text-[color:var(--muted-foreground)]">Cargando...</p>
+          <p className="mt-4 text-sm text-[color:var(--muted-foreground)]">
+            Cargando...
+          </p>
         </div>
       </div>
     </main>
@@ -153,13 +155,13 @@ function LoginContent() {
               />
             </div>
             <div className="flex items-center justify-between text-xs text-[color:var(--muted-foreground)]">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-[color:var(--border)] text-[color:var(--accent)] focus:ring-0"
-                />
-                Remember me
-              </label>
+              {/* <label className="flex items-center gap-2"> */}
+              {/*   <input */}
+              {/*     type="checkbox" */}
+              {/*     className="h-4 w-4 rounded border-[color:var(--border)] text-[color:var(--accent)] focus:ring-0" */}
+              {/*   /> */}
+              {/*   Remember me */}
+              {/* </label> */}
               <button
                 type="button"
                 className="text-[color:var(--foreground)] transition hover:text-[color:var(--accent)]"
