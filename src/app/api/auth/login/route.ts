@@ -15,7 +15,7 @@ type Credentials = {
 type LoginUserRow = {
   id: string;
   master_password_hash: string;
-  verified_at: string | null;
+  verified_at: Date | null;
 };
 
 function normalizeEmail(value: FormDataEntryValue | string | null) {

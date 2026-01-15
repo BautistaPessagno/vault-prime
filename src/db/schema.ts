@@ -7,7 +7,7 @@ export const usersTable = pgTable("users", {
   created_at: timestamp("created_at", { withTimezone: true, mode: "string" })
     .notNull()
     .defaultNow(),
-  verified_at: timestamp("verified_at", { withTimezone: true, mode: "string" }),
+  verified_at: timestamp("verified_at", { withTimezone: true, mode: "date" }),
 });
 
 export const entriesTable = pgTable("entries", {
@@ -31,10 +31,10 @@ export const emailVerificationTokensTable = pgTable(
       .notNull()
       .references(() => usersTable.id),
     token: text("token").notNull(),
-    created_at: timestamp("created_at", { withTimezone: true, mode: "string" })
+    created_at: timestamp("created_at", { withTimezone: true, mode: "date" })
       .notNull()
       .defaultNow(),
-    expires_at: timestamp("expires_at", { withTimezone: true, mode: "string" }),
+    expires_at: timestamp("expires_at", { withTimezone: true, mode: "date" }),
     attempts: integer("attempts").notNull().default(0),
   },
 );

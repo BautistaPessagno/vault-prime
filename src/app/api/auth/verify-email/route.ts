@@ -6,7 +6,7 @@ import { eq, sql } from "drizzle-orm";
 type VerifyEmailTokenRow = {
   id: string;
   user_id: string;
-  expires_at: string | null;
+  expires_at: Date | null;
   attempts: number;
 };
 
@@ -45,12 +45,7 @@ export async function POST(req: Request) {
   }
 
   if (verificationTokenRow.expires_at) {
-    const expiresAt = new Date(verificationTokenRow.expires_at);
-    if (Number.isNaN(expiresAt.getTime())) {
-      return NextResponse.json({ error: "expired" }, { status: 400 });
-    }
-
-    if (expiresAt.getTime() < Date.now()) {
+    if (verificationTokenRow.expires_at.getTime() < Date.now()) {
       return NextResponse.json({ error: "expired" }, { status: 400 });
     }
   }
@@ -69,7 +64,7 @@ export async function POST(req: Request) {
   try {
     await db
       .update(usersTable)
-      .set({ verified_at: new Date().toISOString() })
+      .set({ verified_at: new Date() })
       .where(eq(usersTable.id, verificationTokenRow.user_id));
   } catch (error) {
     console.error("[Auth Verify Email] Update error:", error);
