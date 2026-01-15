@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { entriesTable } from "@/src/db/schema";
 import { getSessionData } from "@/src/lib/entries/crypto";
+import { getUserVerificationStatus } from "@/src/lib/auth/verify-user";
 
 type RouteContext = {
   params: Promise<{
@@ -20,6 +21,20 @@ export async function POST(req: Request, context: RouteContext) {
   const { userId } = session;
   if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const verification = await getUserVerificationStatus(userId);
+  if (verification.status === "error") {
+    return NextResponse.json({ error: "db" }, { status: 500 });
+  }
+  if (verification.status === "missing") {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (verification.status === "unverified") {
+    return NextResponse.json(
+      { error: "unverified", email: verification.email },
+      { status: 403 },
+    );
   }
   const userIdForQuery = userId;
   const entryId = id;

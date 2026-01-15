@@ -15,6 +15,13 @@
       "when": 1767137236244,
       "tag": "0001_bright_annihilus",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1768416535676,
+      "tag": "0002_lame_ghost_rider",
+      "breakpoints": true
     }
   ]
 }

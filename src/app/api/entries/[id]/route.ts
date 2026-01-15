@@ -8,6 +8,7 @@ import {
   decryptEntryFields,
   type EntryRow,
 } from "@/src/lib/entries/crypto";
+import { getUserVerificationStatus } from "@/src/lib/auth/verify-user";
 
 type RouteContext = {
   params: Promise<{
@@ -25,6 +26,20 @@ export async function PUT(req: Request, context: RouteContext) {
   const { userId, encryptionKey } = session;
   if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const verification = await getUserVerificationStatus(userId);
+  if (verification.status === "error") {
+    return NextResponse.json({ error: "db" }, { status: 500 });
+  }
+  if (verification.status === "missing") {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (verification.status === "unverified") {
+    return NextResponse.json(
+      { error: "unverified", email: verification.email },
+      { status: 403 },
+    );
   }
   const userIdForQuery = userId;
   const entryId = id;
@@ -111,6 +126,20 @@ export async function DELETE(_req: Request, context: RouteContext) {
   const { userId } = session;
   if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const verification = await getUserVerificationStatus(userId);
+  if (verification.status === "error") {
+    return NextResponse.json({ error: "db" }, { status: 500 });
+  }
+  if (verification.status === "missing") {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (verification.status === "unverified") {
+    return NextResponse.json(
+      { error: "unverified", email: verification.email },
+      { status: 403 },
+    );
   }
   const userIdForQuery = userId;
   const entryId = id;

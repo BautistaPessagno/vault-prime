@@ -8,6 +8,7 @@ import {
   decryptEntryFields,
   type EntryRow,
 } from "@/src/lib/entries/crypto";
+import { getUserVerificationStatus } from "@/src/lib/auth/verify-user";
 
 export async function GET() {
   const session = await getSessionData();
@@ -18,6 +19,20 @@ export async function GET() {
   const { userId, encryptionKey } = session;
   if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const verification = await getUserVerificationStatus(userId);
+  if (verification.status === "error") {
+    return NextResponse.json({ error: "db" }, { status: 500 });
+  }
+  if (verification.status === "missing") {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (verification.status === "unverified") {
+    return NextResponse.json(
+      { error: "unverified", email: verification.email },
+      { status: 403 },
+    );
   }
   const userIdForQuery = userId;
 
@@ -65,6 +80,20 @@ export async function POST(req: Request) {
   const { userId, encryptionKey } = session;
   if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const verification = await getUserVerificationStatus(userId);
+  if (verification.status === "error") {
+    return NextResponse.json({ error: "db" }, { status: 500 });
+  }
+  if (verification.status === "missing") {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (verification.status === "unverified") {
+    return NextResponse.json(
+      { error: "unverified", email: verification.email },
+      { status: 403 },
+    );
   }
   const userIdForQuery = userId;
 

@@ -7,6 +7,7 @@ import { Suspense, useState } from "react";
 const loginMessages: Record<string, string> = {
   missing: "Enter both email and password to continue.",
   invalid: "We could not verify those credentials.",
+  unverified: "Please verify your email to continue.",
   unexpected: "Something went wrong. Please try again.",
 };
 
@@ -76,6 +77,10 @@ function LoginContent() {
       };
 
       if (!response.ok) {
+        if (payload.error === "unverified") {
+          router.push(`/verify-email/pending?email=${encodeURIComponent(email)}`);
+          return;
+        }
         setErrorMessage(
           loginMessages[payload.error ?? "unexpected"] ??
             loginMessages.unexpected,

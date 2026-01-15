@@ -64,22 +64,9 @@ function SignupContent() {
         credentials: "include",
         body: JSON.stringify({ email, password }),
       });
-
-      const message = await fetch("/api/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      });
-      if (!message.ok) {
-        setErrorMessage(signupMessages.unexpected);
-        return;
-      }
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
+        emailSent?: boolean;
       };
 
       if (!response.ok) {
@@ -90,8 +77,7 @@ function SignupContent() {
         return;
       }
 
-      // Signup now automatically logs the user in with the session
-      router.push("/");
+      router.push(`/verify-email/pending?email=${encodeURIComponent(email)}`);
     } catch {
       setErrorMessage(signupMessages.unexpected);
     } finally {
