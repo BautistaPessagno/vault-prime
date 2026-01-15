@@ -4,11 +4,13 @@ import { VerifyEmailTemplate } from "@/src/components/email/verify-email-templat
 type SendVerificationEmailArgs = {
   to: string;
   verifyUrl: string;
+  code: string;
 };
 
 export async function sendVerificationEmail({
   to,
   verifyUrl,
+  code,
 }: SendVerificationEmailArgs): Promise<{ ok: true } | { ok: false; error: string }> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -23,7 +25,7 @@ export async function sendVerificationEmail({
       from,
       to: [to],
       subject: "Verify your email · Vault Prime",
-      react: VerifyEmailTemplate({ verifyUrl }),
+      react: VerifyEmailTemplate({ verifyUrl, code }),
     });
 
     if (error) {

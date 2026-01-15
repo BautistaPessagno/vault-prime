@@ -91,7 +91,7 @@ export default function Home() {
         const emailParam = payload.email
           ? `?email=${encodeURIComponent(payload.email)}`
           : "";
-        router.push(`/verify-email/pending${emailParam}`);
+        router.push(`/verify-email${emailParam}`);
         return true;
       }
     }

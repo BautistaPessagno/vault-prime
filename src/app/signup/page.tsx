@@ -77,7 +77,7 @@ function SignupContent() {
         return;
       }
 
-      router.push(`/verify-email/pending?email=${encodeURIComponent(email)}`);
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
     } catch {
       setErrorMessage(signupMessages.unexpected);
     } finally {

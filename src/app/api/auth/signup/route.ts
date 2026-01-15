@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { hash, masterPasswordHash } from "@/src/lib/auth/encryption";
 import { db } from "@/src/db";
 import { usersTable } from "@/src/db/schema";
-import { generateAuthToken } from "@/src/lib/auth/verification";
+import { generateAuthCode } from "@/src/lib/auth/verification";
 import { sendVerificationEmail } from "@/src/lib/email/send-verification-email";
 
 type Credentials = {
@@ -60,7 +60,7 @@ function withSuccess(request: Request, email: string, emailSent: boolean) {
     return NextResponse.json({ ok: true, emailSent });
   }
 
-  const url = new URL("/verify-email/pending", request.url);
+  const url = new URL("/verify-email", request.url);
   url.searchParams.set("email", email);
   return NextResponse.redirect(url);
 }
@@ -111,15 +111,17 @@ export async function POST(req: Request) {
     return withError(req, "insert", 500);
   }
 
-  const verificationToken = await generateAuthToken(createdUserId);
+  const verificationCode = await generateAuthCode(createdUserId);
 
   let emailSent = false;
-  if (verificationToken) {
+  if (verificationCode) {
     const origin = new URL(req.url).origin;
-    const verifyUrl = `${origin}/verify-email?token=${encodeURIComponent(
-      verificationToken,
-    )}`;
-    const sent = await sendVerificationEmail({ to: email, verifyUrl });
+    const verifyUrl = `${origin}/verify-email`;
+    const sent = await sendVerificationEmail({
+      to: email,
+      verifyUrl,
+      code: verificationCode
+    });
     emailSent = sent.ok;
     if (!sent.ok) {
       console.error("[Auth Signup] Verification email error:", sent.error);

@@ -78,7 +78,7 @@ function LoginContent() {
 
       if (!response.ok) {
         if (payload.error === "unverified") {
-          router.push(`/verify-email/pending?email=${encodeURIComponent(email)}`);
+          router.push(`/verify-email?email=${encodeURIComponent(email)}`);
           return;
         }
         setErrorMessage(

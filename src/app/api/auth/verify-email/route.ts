@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/src/db";
-import { usersTable, emailVerificationTokensTable } from "@/src/db/schema";
+import { usersTable, emailVerificationCodesTable } from "@/src/db/schema";
 import { eq, sql } from "drizzle-orm";
 
-type VerifyEmailTokenRow = {
+type VerifyEmailCodeRow = {
   id: string;
   user_id: string;
   expires_at: Date | null;
@@ -11,50 +11,50 @@ type VerifyEmailTokenRow = {
 };
 
 export async function POST(req: Request) {
-  let token: unknown;
+  let code: unknown;
   try {
     const body = await req.json();
-    token = body?.token;
+    code = body?.code;
   } catch {
-    token = undefined;
+    code = undefined;
   }
 
-  if (typeof token !== "string" || token.trim() === "") {
-    return NextResponse.json({ error: "missing token" }, { status: 400 });
+  if (typeof code !== "string" || code.trim() === "") {
+    return NextResponse.json({ error: "missing code" }, { status: 400 });
   }
 
-  let verificationTokenRow: VerifyEmailTokenRow | undefined;
+  let verificationCodeRow: VerifyEmailCodeRow | undefined;
   try {
-    const tokenRow = await db
+    const codeRow = await db
       .select({
-        id: emailVerificationTokensTable.id,
-        user_id: emailVerificationTokensTable.user_id,
-        expires_at: emailVerificationTokensTable.expires_at,
-        attempts: emailVerificationTokensTable.attempts,
+        id: emailVerificationCodesTable.id,
+        user_id: emailVerificationCodesTable.user_id,
+        expires_at: emailVerificationCodesTable.expires_at,
+        attempts: emailVerificationCodesTable.attempts,
       })
-      .from(emailVerificationTokensTable)
-      .where(eq(emailVerificationTokensTable.token, token))
+      .from(emailVerificationCodesTable)
+      .where(eq(emailVerificationCodesTable.code, code))
       .limit(1);
-    verificationTokenRow = tokenRow[0];
+    verificationCodeRow = codeRow[0];
   } catch (error) {
     console.error("[Auth Verify Email] Database error:", error);
     return NextResponse.json({ error: "db" }, { status: 500 });
   }
-  if (!verificationTokenRow) {
-    return NextResponse.json({ error: "invalid token" }, { status: 400 });
+  if (!verificationCodeRow) {
+    return NextResponse.json({ error: "invalid code" }, { status: 400 });
   }
 
-  if (verificationTokenRow.expires_at) {
-    if (verificationTokenRow.expires_at.getTime() < Date.now()) {
+  if (verificationCodeRow.expires_at) {
+    if (verificationCodeRow.expires_at.getTime() < Date.now()) {
       return NextResponse.json({ error: "expired" }, { status: 400 });
     }
   }
 
   try {
     await db
-      .update(emailVerificationTokensTable)
-      .set({ attempts: sql`${emailVerificationTokensTable.attempts} + 1` })
-      .where(eq(emailVerificationTokensTable.id, verificationTokenRow.id));
+      .update(emailVerificationCodesTable)
+      .set({ attempts: sql`${emailVerificationCodesTable.attempts} + 1` })
+      .where(eq(emailVerificationCodesTable.id, verificationCodeRow.id));
   } catch (error) {
     console.error("[Auth Verify Email] Attempts update error:", error);
     return NextResponse.json({ error: "db" }, { status: 500 });
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
     await db
       .update(usersTable)
       .set({ verified_at: new Date() })
-      .where(eq(usersTable.id, verificationTokenRow.user_id));
+      .where(eq(usersTable.id, verificationCodeRow.user_id));
   } catch (error) {
     console.error("[Auth Verify Email] Update error:", error);
     return NextResponse.json({ error: "db" }, { status: 500 });

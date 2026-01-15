@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { usersTable } from "@/src/db/schema";
-import { generateAuthToken } from "@/src/lib/auth/verification";
+import { generateAuthCode } from "@/src/lib/auth/verification";
 import { sendVerificationEmail } from "@/src/lib/email/send-verification-email";
 
 function normalizeEmail(value: unknown) {
@@ -44,14 +44,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, alreadyVerified: true }, { status: 200 });
     }
 
-    const token = await generateAuthToken(user.id);
-    if (!token) {
+    const code = await generateAuthCode(user.id);
+    if (!code) {
       return NextResponse.json({ ok: true }, { status: 200 });
     }
 
     const origin = new URL(req.url).origin;
-    const verifyUrl = `${origin}/verify-email?token=${encodeURIComponent(token)}`;
-    const sent = await sendVerificationEmail({ to: email, verifyUrl });
+    const verifyUrl = `${origin}/verify-email`;
+    const sent = await sendVerificationEmail({ to: email, verifyUrl, code });
     if (!sent.ok) {
       console.error("[Auth Resend Verification] Email error:", sent.error);
     }

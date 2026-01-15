@@ -6,21 +6,21 @@ import { Suspense } from "react";
 import { ResendVerificationForm } from "../_components/resend-verification-form";
 
 const errorCopy: Record<string, { title: string; body: string }> = {
-  missing_token: {
-    title: "Missing link",
-    body: "That verification link is missing a token. Please request a new one.",
+  missing_code: {
+    title: "Missing code",
+    body: "That verification code is missing. Please request a new one.",
   },
   expired: {
-    title: "Link expired",
-    body: "That verification link has expired. Request a fresh one below.",
+    title: "Code expired",
+    body: "That verification code has expired. Request a fresh one below.",
   },
-  invalid_token: {
-    title: "Invalid link",
-    body: "That verification link isn’t valid. Request a fresh one below.",
+  invalid_code: {
+    title: "Invalid code",
+    body: "That verification code isn't valid. Request a fresh one below.",
   },
   db: {
     title: "Server error",
-    body: "We couldn’t verify right now. Please try resending the email.",
+    body: "We couldn't verify right now. Please try resending the email.",
   },
   unexpected: {
     title: "Something went wrong",
@@ -73,7 +73,7 @@ function ErrorContent() {
         <section className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-6">
           <div className="space-y-4">
             <div className="rounded-xl border border-[color:var(--danger)] bg-[color:var(--muted)] px-4 py-3 text-sm text-[color:var(--danger)]">
-              Verification failed.
+              Verification failed {"-"} {reason}
             </div>
 
             <p className="text-sm text-[color:var(--muted-foreground)]">
@@ -94,4 +94,3 @@ function ErrorContent() {
     </main>
   );
 }
-

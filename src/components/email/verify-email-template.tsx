@@ -15,44 +15,42 @@ import * as React from "react";
 
 type VerifyEmailTemplateProps = {
   verifyUrl: string;
+  code: string;
 };
 
-export function VerifyEmailTemplate({ verifyUrl }: VerifyEmailTemplateProps) {
+export function VerifyEmailTemplate({ verifyUrl, code }: VerifyEmailTemplateProps) {
   return (
     <Html>
       <Head />
-      <Preview>Verify your email to finish setting up Vault Prime.</Preview>
+      <Preview>Your verification code: {code}</Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
           <Section style={styles.brand}>
             <Text style={styles.brandText}>Vault Prime</Text>
           </Section>
 
-          <Heading style={styles.h1}>Verify your email</Heading>
+          <Heading style={styles.h1}>Verify your email address</Heading>
           <Text style={styles.p}>
-            Click the button below to confirm your email address and activate
-            your account.
+            Enter this code to verify your email and activate your account:
           </Text>
 
-          <Section style={styles.ctaWrap}>
-            <Button href={verifyUrl} style={styles.button}>
-              Verify email
-            </Button>
+          <Section style={styles.codeWrap}>
+            <Text style={styles.code}>{code}</Text>
           </Section>
 
           <Text style={styles.pMuted}>
-            If the button doesn’t work, copy and paste this link:
+            Or click here to go to the verification page:
           </Text>
-          <Text style={styles.linkText}>
-            <Link href={verifyUrl} style={styles.link}>
-              {verifyUrl}
-            </Link>
-          </Text>
+          <Section style={styles.ctaWrap}>
+            <Button href={verifyUrl} style={styles.button}>
+              Go to verification page
+            </Button>
+          </Section>
 
           <Hr style={styles.hr} />
 
           <Text style={styles.footer}>
-            This link expires in 15 minutes. If you didn’t request this, you can
+            This code expires in 15 minutes. If you didn't request this, you can
             safely ignore this email.
           </Text>
         </Container>
@@ -99,18 +97,33 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: "1.6",
     margin: "0 0 18px",
   },
+  codeWrap: {
+    backgroundColor: "#0b132b",
+    borderRadius: 12,
+    padding: "20px",
+    margin: "20px 0 24px",
+    textAlign: "center",
+  },
+  code: {
+    color: "#00f0ff",
+    fontSize: 42,
+    fontWeight: 700,
+    letterSpacing: "0.2em",
+    margin: 0,
+    fontFamily: "ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace",
+  },
   ctaWrap: {
-    margin: "18px 0 16px",
+    margin: "12px 0 16px",
     textAlign: "center",
   },
   button: {
-    backgroundColor: "#00f0ff",
+    backgroundColor: "#1e2d4a",
     borderRadius: 999,
-    color: "#0b132b",
+    color: "#b3c0d8",
     display: "inline-block",
-    fontSize: 14,
-    fontWeight: 700,
-    padding: "12px 18px",
+    fontSize: 13,
+    fontWeight: 600,
+    padding: "10px 16px",
     textDecoration: "none",
   },
   pMuted: {

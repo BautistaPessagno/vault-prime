@@ -23,21 +23,18 @@ export const entriesTable = pgTable("entries", {
   last_copied: timestamp("copied_at", { withTimezone: true, mode: "string" }),
 });
 
-export const emailVerificationTokensTable = pgTable(
-  "email_verification_tokens",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    user_id: uuid("user_id")
-      .notNull()
-      .references(() => usersTable.id),
-    token: text("token").notNull(),
-    created_at: timestamp("created_at", { withTimezone: true, mode: "date" })
-      .notNull()
-      .defaultNow(),
-    expires_at: timestamp("expires_at", { withTimezone: true, mode: "date" }),
-    attempts: integer("attempts").notNull().default(0),
-  },
-);
+export const emailVerificationCodesTable = pgTable("email_verification_codes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  user_id: uuid("user_id")
+    .notNull()
+    .references(() => usersTable.id),
+  code: text("code").notNull(),
+  created_at: timestamp("created_at", { withTimezone: true, mode: "date" })
+    .notNull()
+    .defaultNow(),
+  expires_at: timestamp("expires_at", { withTimezone: true, mode: "date" }),
+  attempts: integer("attempts").notNull().default(0),
+});
 
 export type InsertUser = typeof usersTable.$inferInsert;
 export type SelectUser = typeof usersTable.$inferSelect;
