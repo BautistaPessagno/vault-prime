@@ -138,7 +138,7 @@ function SignupContent() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full rounded-xl bg-[color:var(--accent)] px-4 py-3 text-sm font-semibold text-[color:var(--foreground)] transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-70"
+              className="w-full rounded-xl bg-[color:var(--accent)] px-4 py-3 text-sm font-semibold text-[color:var(--accent-foreground)] transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isSubmitting ? "Creating..." : "Create account"}
             </button>

@@ -391,7 +391,7 @@ export default function Home() {
           <div className="flex flex-wrap gap-3">
             <button
               onClick={handleCreate}
-              className="rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm font-semibold text-[color:var(--foreground)] transition hover:brightness-95"
+              className="rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm font-semibold text-[color:var(--accent-foreground)] transition hover:brightness-95"
             >
               Nueva entrada
             </button>
@@ -577,7 +577,7 @@ export default function Home() {
                     </button>
                     <button
                       type="submit"
-                      className="rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm font-semibold text-[color:var(--foreground)] transition hover:brightness-95"
+                      className="rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm font-semibold text-[color:var(--accent-foreground)] transition hover:brightness-95"
                     >
                       Guardar
                     </button>
@@ -844,7 +844,7 @@ export default function Home() {
                 </p>
                 <button
                   onClick={handleCreate}
-                  className="mt-5 rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm font-semibold text-[color:var(--foreground)] transition hover:brightness-95"
+                  className="mt-5 rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm font-semibold text-[color:var(--accent-foreground)] transition hover:brightness-95"
                 >
                   Crear entrada
                 </button>

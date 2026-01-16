@@ -22,7 +22,7 @@ export default function VerifyEmailSuccessPage() {
 
             <Link
               href="/login"
-              className="block w-full rounded-xl bg-[color:var(--accent)] px-4 py-3 text-center text-sm font-semibold text-[color:var(--foreground)] transition hover:brightness-95"
+              className="block w-full rounded-xl bg-[color:var(--accent)] px-4 py-3 text-center text-sm font-semibold text-[color:var(--accent-foreground)] transition hover:brightness-95"
             >
               Continue to sign in
             </Link>

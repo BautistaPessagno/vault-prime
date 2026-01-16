@@ -61,14 +61,14 @@ export function VerifyEmailTemplate({ verifyUrl, code }: VerifyEmailTemplateProp
 
 const styles: Record<string, React.CSSProperties> = {
   body: {
-    backgroundColor: "#0b132b",
+    backgroundColor: "#e8ecf4",
     margin: 0,
     padding: "32px 0",
     fontFamily:
       'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"',
   },
   container: {
-    backgroundColor: "#111a33",
+    backgroundColor: "#ffffff",
     borderRadius: 18,
     margin: "0 auto",
     padding: "28px 28px 22px",
@@ -78,34 +78,38 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 14,
   },
   brandText: {
-    color: "#00f0ff",
+    backgroundColor: "#00f0ff",
+    color: "#000000",
     fontWeight: 700,
     letterSpacing: "0.28em",
     textTransform: "uppercase",
     fontSize: 12,
     margin: 0,
+    display: "inline-block",
+    padding: "6px 14px",
+    borderRadius: 999,
   },
   h1: {
-    color: "#f8f8ff",
+    color: "#0b132b",
     fontSize: 28,
     margin: "6px 0 10px",
     lineHeight: "1.2",
   },
   p: {
-    color: "#b3c0d8",
+    color: "#4a5a73",
     fontSize: 15,
     lineHeight: "1.6",
     margin: "0 0 18px",
   },
   codeWrap: {
-    backgroundColor: "#0b132b",
+    backgroundColor: "#e8ecf4",
     borderRadius: 12,
     padding: "20px",
     margin: "20px 0 24px",
     textAlign: "center",
   },
   code: {
-    color: "#00f0ff",
+    color: "#000000",
     fontSize: 42,
     fontWeight: 700,
     letterSpacing: "0.2em",
@@ -117,9 +121,9 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: "center",
   },
   button: {
-    backgroundColor: "#1e2d4a",
+    backgroundColor: "#d9e2ef",
     borderRadius: 999,
-    color: "#b3c0d8",
+    color: "#4a5a73",
     display: "inline-block",
     fontSize: 13,
     fontWeight: 600,
@@ -127,7 +131,7 @@ const styles: Record<string, React.CSSProperties> = {
     textDecoration: "none",
   },
   pMuted: {
-    color: "#b3c0d8",
+    color: "#4a5a73",
     fontSize: 13,
     lineHeight: "1.6",
     margin: "10px 0 6px",
@@ -137,16 +141,16 @@ const styles: Record<string, React.CSSProperties> = {
     wordBreak: "break-all",
   },
   link: {
-    color: "#00f0ff",
+    color: "#0066cc",
     fontSize: 13,
     textDecoration: "underline",
   },
   hr: {
-    borderColor: "#24304a",
+    borderColor: "#d9e2ef",
     margin: "18px 0 14px",
   },
   footer: {
-    color: "#b3c0d8",
+    color: "#4a5a73",
     fontSize: 12,
     lineHeight: "1.6",
     margin: 0,
