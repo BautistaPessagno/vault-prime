@@ -42,8 +42,8 @@ export async function GET() {
       .select({
         id: entriesTable.id,
         user_id: entriesTable.user_id,
-        nombre: entriesTable.nombre,
-        usuario: entriesTable.usuario,
+        name: entriesTable.name,
+        username: entriesTable.username,
         password: entriesTable.password,
         url: entriesTable.url,
         last_edited: entriesTable.last_edited,
@@ -99,16 +99,16 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => null);
 
-  const nombre = String(body?.nombre ?? "").trim();
-  const usuario = String(body?.usuario ?? "").trim();
+  const name = String(body?.name ?? "").trim();
+  const username = String(body?.username ?? "").trim();
   const password = String(body?.password ?? "");
-  const url = String(body?.url ?? usuario).trim();
-  if (!nombre || !password) {
+  const url = String(body?.url ?? username).trim();
+  if (!name || !password) {
     return NextResponse.json({ error: "missing_fields" }, { status: 400 });
   }
 
   const encryptedFields = await encryptEntryFields(
-    { nombre, usuario, password, url },
+    { name, username, password, url },
     encryptionKey,
   );
 
@@ -135,8 +135,8 @@ export async function POST(req: Request) {
       .returning({
         id: entriesTable.id,
         user_id: entriesTable.user_id,
-        nombre: entriesTable.nombre,
-        usuario: entriesTable.usuario,
+        name: entriesTable.name,
+        username: entriesTable.username,
         password: entriesTable.password,
         url: entriesTable.url,
         last_edited: entriesTable.last_edited,

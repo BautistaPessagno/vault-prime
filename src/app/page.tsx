@@ -6,8 +6,8 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 type Entry = {
   id: string;
   user_id: string | null;
-  nombre: string;
-  usuario: string;
+  name: string;
+  username: string;
   url: string;
   password: string;
   last_edited: string | null;
@@ -15,15 +15,15 @@ type Entry = {
 };
 
 type EntryDraft = {
-  nombre: string;
-  usuario: string;
+  name: string;
+  username: string;
   url: string;
   password: string;
 };
 
 const emptyDraft: EntryDraft = {
-  nombre: "",
-  usuario: "",
+  name: "",
+  username: "",
   url: "",
   password: "",
 };
@@ -56,8 +56,8 @@ export default function Home() {
     }
     return entries.filter((entry) => {
       return (
-        entry.nombre.toLowerCase().includes(normalized) ||
-        entry.usuario.toLowerCase().includes(normalized) ||
+        entry.name.toLowerCase().includes(normalized) ||
+        entry.username.toLowerCase().includes(normalized) ||
         entry.url.toLowerCase().includes(normalized)
       );
     });
@@ -133,7 +133,7 @@ export default function Home() {
           );
         }
       } catch {
-        setNotice("Error al registrar la copia.");
+        setNotice("Error recording copy.");
       }
     };
 
@@ -157,7 +157,7 @@ export default function Home() {
       setEntries(incoming);
       return true;
     } catch {
-      setNotice("Error al cargar las entradas.");
+      setNotice("Error loading entries.");
       return false;
     } finally {
       setLoading(false);
@@ -196,8 +196,8 @@ export default function Home() {
     setIsEditing(true);
     setIsCreating(false);
     setDraft({
-      nombre: activeEntry.nombre,
-      usuario: activeEntry.usuario,
+      name: activeEntry.name,
+      username: activeEntry.username,
       url: activeEntry.url,
       password: activeEntry.password,
     });
@@ -211,8 +211,8 @@ export default function Home() {
 
   const persistEntry = async (
     entry: Partial<Entry> & {
-      nombre: string;
-      usuario: string;
+      name: string;
+      username: string;
       url: string;
       password: string;
     },
@@ -225,8 +225,8 @@ export default function Home() {
         mode === "delete"
           ? null
           : {
-              nombre: entry.nombre,
-              usuario: entry.usuario,
+              name: entry.name,
+              username: entry.username,
               url: entry.url,
               password: entry.password,
               last_edited: entry.last_edited,
@@ -249,15 +249,15 @@ export default function Home() {
       const data = await res.json();
       return data.entry as Entry;
     } catch {
-      setNotice("Error al guardar cambios.");
+      setNotice("Error saving changes.");
       return null;
     }
   };
 
   const handleSave = async (event: FormEvent) => {
     event.preventDefault();
-    if (!draft.nombre.trim() || !draft.password) {
-      setNotice("Nombre y contrasena son requeridos.");
+    if (!draft.name.trim() || !draft.password) {
+      setNotice("Name and password are required.");
       return;
     }
 
@@ -265,8 +265,8 @@ export default function Home() {
 
     if (isCreating) {
       const newEntryData = {
-        nombre: draft.nombre.trim(),
-        usuario: draft.usuario.trim(),
+        name: draft.name.trim(),
+        username: draft.username.trim(),
         url: draft.url.trim(),
         password: draft.password,
         last_edited: now,
@@ -279,13 +279,13 @@ export default function Home() {
       if (createdEntry) {
         setEntries((prev) => [createdEntry, ...prev]);
         setActiveId(String(createdEntry.id));
-        setNotice("Entrada creada.");
+        setNotice("Entry created.");
       }
     } else if (isEditing && activeEntry) {
       const updated = {
         ...activeEntry,
-        nombre: draft.nombre.trim(),
-        usuario: draft.usuario.trim(),
+        name: draft.name.trim(),
+        username: draft.username.trim(),
         url: draft.url.trim(),
         password: draft.password,
         last_edited: now,
@@ -300,20 +300,20 @@ export default function Home() {
             entry.id === savedEntry.id ? savedEntry : entry,
           ),
         );
-        setNotice("Entrada actualizada.");
+        setNotice("Entry updated.");
       }
     }
   };
 
   const handleDelete = async () => {
     if (!activeEntry) return;
-    if (!window.confirm(`Eliminar ${activeEntry.nombre}?`)) return;
+    if (!window.confirm(`Delete ${activeEntry.name}?`)) return;
 
     const targetId = activeEntry.id;
     setEntries((prev) => prev.filter((entry) => entry.id !== targetId));
     setActiveId(null);
     await persistEntry(activeEntry, "delete");
-    setNotice("Entrada eliminada.");
+    setNotice("Entry deleted.");
   };
 
   const handleCopy = async (
@@ -323,17 +323,17 @@ export default function Home() {
   ) => {
     try {
       await navigator.clipboard.writeText(text);
-      setNotice(`${label} copiado.`);
+      setNotice(`${label} copied.`);
       setCopyFlag({ id: entryId, at: new Date().toISOString() });
     } catch {
-      setNotice("No se pudo copiar.");
+      setNotice("Could not copy.");
     }
   };
 
   const formatLastCopied = (value: string | null) => {
-    if (!value) return "Sin copiar";
+    if (!value) return "Not copied";
     const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) return "Sin copiar";
+    if (Number.isNaN(parsed.getTime())) return "Not copied";
     return parsed.toLocaleString();
   };
 
@@ -348,7 +348,7 @@ export default function Home() {
           <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] px-8 py-6 text-center">
             <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[color:var(--accent)] border-t-transparent"></div>
             <p className="mt-4 text-sm text-[color:var(--muted-foreground)]">
-              Cargando entradas...
+              Loading entries...
             </p>
           </div>
         </div>
@@ -383,9 +383,9 @@ export default function Home() {
             <p className="text-xs font-semibold uppercase tracking-[0.4em] text-[color:var(--muted-foreground)]">
               Vault Prime
             </p>
-            <h1 className="text-3xl font-semibold">Mis entradas</h1>
+            <h1 className="text-3xl font-semibold">My Entries</h1>
             <p className="text-sm text-[color:var(--muted-foreground)]">
-              Todo en un solo lugar. Busqueda rapida, copia directa.
+              Everything in one place. Quick search, direct copy.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -393,14 +393,14 @@ export default function Home() {
               onClick={handleCreate}
               className="rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm font-semibold text-[color:var(--accent-foreground)] transition hover:brightness-95"
             >
-              Nueva entrada
+              New Entry
             </button>
             <button
               onClick={handleLogout}
               disabled={isLoggingOut}
               className="rounded-full border border-[color:var(--border)] px-4 py-2 text-sm font-semibold text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {isLoggingOut ? "Saliendo..." : "Cerrar sesion"}
+              {isLoggingOut ? "Signing out..." : "Sign out"}
             </button>
           </div>
         </header>
@@ -410,24 +410,24 @@ export default function Home() {
             <div className="flex items-center justify-between border-b border-[color:var(--border)] px-5 py-4">
               <div>
                 <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
-                  Entradas
+                  Entries
                 </p>
                 <p className="text-2xl font-semibold">{entries.length}</p>
               </div>
               <span className="rounded-full border border-[color:var(--border)] px-3 py-1 text-xs text-[color:var(--muted-foreground)]">
-                {query ? `${filteredEntries.length} resultados` : "Todas"}
+                {query ? `${filteredEntries.length} results` : "All"}
               </span>
             </div>
 
             <div className="px-5 py-4">
               <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
-                Buscar
+                Search
               </label>
               <input
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Sitio, usuario, enlace"
+                placeholder="Site, username, link"
                 className="mt-2 w-full rounded-full border border-[color:var(--border)] bg-transparent px-4 py-2 text-sm outline-none transition focus:border-[color:var(--accent)]"
               />
             </div>
@@ -435,16 +435,16 @@ export default function Home() {
             <div className="flex-1 overflow-y-auto px-3 pb-4">
               {loading ? (
                 <p className="px-3 py-4 text-sm text-[color:var(--muted-foreground)]">
-                  Cargando...
+                  Loading...
                 </p>
               ) : filteredEntries.length === 0 ? (
                 <div className="px-3 py-6 text-sm text-[color:var(--muted-foreground)]">
-                  No hay entradas aun.
+                  No entries yet.
                   <button
                     onClick={handleCreate}
                     className="mt-4 w-full rounded-full border border-dashed border-[color:var(--border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] transition hover:border-[color:var(--accent)]"
                   >
-                    Crear la primera
+                    Create the first one
                   </button>
                 </div>
               ) : (
@@ -464,10 +464,10 @@ export default function Home() {
                         }`}
                       >
                         <p className="text-sm font-semibold truncate">
-                          {entry.nombre}
+                          {entry.name}
                         </p>
                         <p className="text-xs text-[color:var(--muted-foreground)] truncate">
-                          {entry.url || "Sin link"}
+                          {entry.url || "No link"}
                         </p>
                       </button>
                     </li>
@@ -486,10 +486,10 @@ export default function Home() {
                       Editor
                     </p>
                     <h2 className="text-2xl font-semibold">
-                      {isCreating ? "Nueva entrada" : "Editar entrada"}
+                      {isCreating ? "New Entry" : "Edit Entry"}
                     </h2>
                     <p className="text-sm text-[color:var(--muted-foreground)]">
-                      Guarda credenciales con claridad.
+                      Save credentials clearly.
                     </p>
                   </div>
                 </div>
@@ -497,16 +497,16 @@ export default function Home() {
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                       <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
-                        Nombre
+                        Name
                       </label>
                       <input
                         type="text"
-                        value={draft.nombre}
+                        value={draft.name}
                         onChange={(e) =>
-                          setDraft({ ...draft, nombre: e.target.value })
+                          setDraft({ ...draft, name: e.target.value })
                         }
                         className="w-full rounded-xl border border-[color:var(--border)] bg-transparent px-4 py-3 text-sm outline-none transition focus:border-[color:var(--accent)]"
-                        placeholder="Nombre del sitio"
+                        placeholder="Site name"
                       />
                     </div>
                     <div className="space-y-2">
@@ -520,26 +520,26 @@ export default function Home() {
                           setDraft({ ...draft, url: e.target.value })
                         }
                         className="w-full rounded-xl border border-[color:var(--border)] bg-transparent px-4 py-3 text-sm outline-none transition focus:border-[color:var(--accent)]"
-                        placeholder="https://ejemplo.com"
+                        placeholder="https://example.com"
                       />
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
-                        Usuario
+                        Username
                       </label>
                       <input
                         type="text"
-                        value={draft.usuario}
+                        value={draft.username}
                         onChange={(e) =>
-                          setDraft({ ...draft, usuario: e.target.value })
+                          setDraft({ ...draft, username: e.target.value })
                         }
                         className="w-full rounded-xl border border-[color:var(--border)] bg-transparent px-4 py-3 text-sm outline-none transition focus:border-[color:var(--accent)]"
-                        placeholder="usuario@correo.com"
+                        placeholder="user@email.com"
                       />
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
-                        Contrasena
+                        Password
                       </label>
                       <div className="relative">
                         <input
@@ -562,7 +562,7 @@ export default function Home() {
                           }
                           className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full border border-[color:var(--border)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted-foreground)] transition hover:border-[color:var(--accent)]"
                         >
-                          Generar
+                          Generate
                         </button>
                       </div>
                     </div>
@@ -573,13 +573,13 @@ export default function Home() {
                       onClick={handleCancel}
                       className="rounded-full border border-[color:var(--border)] px-4 py-2 text-sm font-semibold transition hover:border-[color:var(--accent)]"
                     >
-                      Cancelar
+                      Cancel
                     </button>
                     <button
                       type="submit"
                       className="rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm font-semibold text-[color:var(--accent-foreground)] transition hover:brightness-95"
                     >
-                      Guardar
+                      Save
                     </button>
                   </div>
                 </form>
@@ -589,13 +589,13 @@ export default function Home() {
                 <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
-                      Entrada
+                      Entry
                     </p>
                     <h2 className="text-3xl font-semibold">
-                      {activeEntry.nombre}
+                      {activeEntry.name}
                     </h2>
                     <p className="text-sm text-[color:var(--muted-foreground)]">
-                      {activeEntry.url || "Sin link"}
+                      {activeEntry.url || "No link"}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -603,13 +603,13 @@ export default function Home() {
                       onClick={handleEdit}
                       className="rounded-full border border-[color:var(--border)] px-4 py-2 text-sm font-semibold transition hover:border-[color:var(--accent)]"
                     >
-                      Editar
+                      Edit
                     </button>
                     <button
                       onClick={handleDelete}
                       className="rounded-full border border-[color:var(--danger)] px-4 py-2 text-sm font-semibold text-[color:var(--danger)] transition hover:brightness-95"
                     >
-                      Eliminar
+                      Delete
                     </button>
                   </div>
                 </div>
@@ -635,7 +635,7 @@ export default function Home() {
                         </a>
                       ) : (
                         <span className="text-sm text-[color:var(--muted-foreground)]">
-                          Sin link
+                          No link
                         </span>
                       )}
                       <button
@@ -643,7 +643,7 @@ export default function Home() {
                           handleCopy(activeEntry.url, "Link", activeEntry.id)
                         }
                         className="rounded-full border border-[color:var(--border)] p-2 transition hover:border-[color:var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
-                        title="Copiar"
+                        title="Copy"
                         disabled={!activeEntry.url}
                       >
                         <svg
@@ -673,23 +673,23 @@ export default function Home() {
 
                   <div className="rounded-xl border border-[color:var(--border)] p-4">
                     <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
-                      Usuario
+                      Username
                     </label>
                     <div className="mt-3 flex items-center justify-between gap-3">
                       <span className="truncate text-sm font-semibold">
-                        {activeEntry.usuario || "Sin usuario"}
+                        {activeEntry.username || "No username"}
                       </span>
                       <button
                         onClick={() =>
                           handleCopy(
-                            activeEntry.usuario,
-                            "Usuario",
+                            activeEntry.username,
+                            "Username",
                             activeEntry.id,
                           )
                         }
                         className="rounded-full border border-[color:var(--border)] p-2 transition hover:border-[color:var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
-                        title="Copiar"
-                        disabled={!activeEntry.usuario}
+                        title="Copy"
+                        disabled={!activeEntry.username}
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -718,7 +718,7 @@ export default function Home() {
 
                   <div className="rounded-xl border border-[color:var(--border)] p-4 md:col-span-2">
                     <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
-                      Contrasena
+                      Password
                     </label>
                     <div className="mt-3 flex items-center justify-between gap-3">
                       <span className="truncate font-mono text-sm">
@@ -730,7 +730,7 @@ export default function Home() {
                         <button
                           onClick={() => setShowPassword(!showPassword)}
                           className="rounded-full border border-[color:var(--border)] p-2 transition hover:border-[color:var(--accent)]"
-                          title={showPassword ? "Ocultar" : "Mostrar"}
+                          title={showPassword ? "Hide" : "Show"}
                         >
                           {showPassword ? (
                             <svg
@@ -768,12 +768,12 @@ export default function Home() {
                           onClick={() =>
                             handleCopy(
                               activeEntry.password,
-                              "Contrasena",
+                              "Password",
                               activeEntry.id,
                             )
                           }
                           className="rounded-full border border-[color:var(--border)] p-2 transition hover:border-[color:var(--accent)]"
-                          title="Copiar"
+                          title="Copy"
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -803,7 +803,7 @@ export default function Home() {
 
                   <div className="rounded-xl border border-[color:var(--border)] p-4 md:col-span-2">
                     <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
-                      Ultima copia
+                      Last copied
                     </label>
                     <p className="mt-3 text-sm text-[color:var(--muted-foreground)]">
                       {formatLastCopied(activeEntry.last_copied)}
@@ -837,16 +837,16 @@ export default function Home() {
                   </svg>
                 </div>
                 <h3 className="mt-4 text-lg font-semibold text-[color:var(--foreground)]">
-                  Selecciona una entrada
+                  Select an entry
                 </h3>
                 <p className="mt-2 text-sm text-[color:var(--muted-foreground)]">
-                  Elige una entrada del panel o crea una nueva.
+                  Choose an entry from the panel or create a new one.
                 </p>
                 <button
                   onClick={handleCreate}
                   className="mt-5 rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm font-semibold text-[color:var(--accent-foreground)] transition hover:brightness-95"
                 >
-                  Crear entrada
+                  Create Entry
                 </button>
               </div>
             )}

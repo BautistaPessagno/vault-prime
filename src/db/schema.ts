@@ -15,8 +15,8 @@ export const entriesTable = pgTable("entries", {
   user_id: uuid("user_id")
     .notNull()
     .references(() => usersTable.id, { onDelete: "cascade" }),
-  nombre: text("name").notNull(),
-  usuario: text("user").notNull(),
+  name: text("name").notNull(),
+  username: text("user").notNull(),
   password: text("password").notNull(),
   url: text("url").notNull(),
   last_edited: timestamp("updated_at", { withTimezone: true, mode: "string" }),

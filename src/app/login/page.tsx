@@ -31,7 +31,7 @@ function LoginFallback() {
         <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] px-8 py-6 text-center">
           <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[color:var(--accent)] border-t-transparent"></div>
           <p className="mt-4 text-sm text-[color:var(--muted-foreground)]">
-            Cargando...
+            Loading...
           </p>
         </div>
       </div>
@@ -105,9 +105,9 @@ function LoginContent() {
           <p className="text-xs font-semibold uppercase tracking-[0.4em] text-[color:var(--muted-foreground)]">
             Vault Prime
           </p>
-          <h1 className="text-3xl font-semibold">Bienvenido</h1>
+          <h1 className="text-3xl font-semibold">Welcome</h1>
           <p className="text-sm text-[color:var(--muted-foreground)]">
-            Inicia sesion para acceder a tu vault.
+            Sign in to access your vault.
           </p>
         </header>
 
@@ -126,7 +126,7 @@ function LoginContent() {
           <div className="mb-6 space-y-2">
             <h2 className="text-2xl font-semibold">Sign in</h2>
             <p className="text-sm text-[color:var(--muted-foreground)]">
-              Usa tu correo y contrasena para continuar.
+              Use your email and password to continue.
             </p>
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">

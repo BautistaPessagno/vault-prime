@@ -27,7 +27,7 @@ function SignupFallback() {
         <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] px-8 py-6 text-center">
           <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[color:var(--accent)] border-t-transparent"></div>
           <p className="mt-4 text-sm text-[color:var(--muted-foreground)]">
-            Cargando...
+            Loading...
           </p>
         </div>
       </div>
@@ -92,9 +92,9 @@ function SignupContent() {
           <p className="text-xs font-semibold uppercase tracking-[0.4em] text-[color:var(--muted-foreground)]">
             Vault Prime
           </p>
-          <h1 className="text-3xl font-semibold">Crea tu cuenta</h1>
+          <h1 className="text-3xl font-semibold">Create Your Account</h1>
           <p className="text-sm text-[color:var(--muted-foreground)]">
-            Configura tu vault en segundos.
+            Set up your vault in seconds.
           </p>
         </header>
 
@@ -107,7 +107,7 @@ function SignupContent() {
           <div className="mb-6 space-y-2">
             <h2 className="text-2xl font-semibold">Create account</h2>
             <p className="text-sm text-[color:var(--muted-foreground)]">
-              Agrega tu email y una contrasena segura.
+              Add your email and a secure password.
             </p>
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">

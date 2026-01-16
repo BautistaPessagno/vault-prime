@@ -6,8 +6,8 @@ import { getKeyCache } from "@/src/lib/cache";
 export type EntryRow = {
   id: string;
   user_id: string;
-  nombre: string;
-  usuario: string;
+  name: string;
+  username: string;
   password: string;
   url: string;
   last_edited: string | null;
@@ -16,13 +16,13 @@ export type EntryRow = {
 
 // API input/output type
 export type EntryInput = {
-  nombre: string;
-  usuario: string;
+  name: string;
+  username: string;
   password: string;
   url: string;
 };
 
-type DbEntryFields = Pick<EntryRow, "nombre" | "usuario" | "password" | "url">;
+type DbEntryFields = Pick<EntryRow, "name" | "username" | "password" | "url">;
 
 type SessionData = {
   userId: string;
@@ -85,8 +85,8 @@ export async function encryptEntryFields(
   key: string,
 ): Promise<DbEntryFields> {
   return {
-    nombre: await encryptValue(fields.nombre, key),
-    usuario: await encryptValue(fields.usuario, key),
+    name: await encryptValue(fields.name, key),
+    username: await encryptValue(fields.username, key),
     password: await encryptValue(fields.password, key),
     url: await encryptValue(fields.url, key),
   };
@@ -98,8 +98,8 @@ export async function decryptEntryFields(
   key: string,
 ): Promise<EntryInput> {
   return {
-    nombre: await decryptValue(fields.nombre, key),
-    usuario: await decryptValue(fields.usuario, key),
+    name: await decryptValue(fields.name, key),
+    username: await decryptValue(fields.username, key),
     password: await decryptValue(fields.password, key),
     url: await decryptValue(fields.url, key),
   };
