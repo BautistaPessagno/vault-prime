@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid, integer } from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -7,6 +7,7 @@ export const usersTable = pgTable("users", {
   created_at: timestamp("created_at", { withTimezone: true, mode: "string" })
     .notNull()
     .defaultNow(),
+  verified_at: timestamp("verified_at", { withTimezone: true, mode: "date" }),
 });
 
 export const entriesTable = pgTable("entries", {
@@ -20,6 +21,19 @@ export const entriesTable = pgTable("entries", {
   url: text("url").notNull(),
   last_edited: timestamp("updated_at", { withTimezone: true, mode: "string" }),
   last_copied: timestamp("copied_at", { withTimezone: true, mode: "string" }),
+});
+
+export const emailVerificationCodesTable = pgTable("email_verification_codes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  user_id: uuid("user_id")
+    .notNull()
+    .references(() => usersTable.id),
+  code: text("code").notNull(),
+  created_at: timestamp("created_at", { withTimezone: true, mode: "date" })
+    .notNull()
+    .defaultNow(),
+  expires_at: timestamp("expires_at", { withTimezone: true, mode: "date" }),
+  attempts: integer("attempts").notNull().default(0),
 });
 
 export type InsertUser = typeof usersTable.$inferInsert;

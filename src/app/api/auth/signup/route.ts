@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { hash, masterPasswordHash, deriveKey } from "@/src/lib/auth/encryption";
-import { signSessionToken } from "@/src/lib/auth/jwt";
-import { generateSessionId } from "@/src/lib/auth/session";
-import { getKeyCache, CACHE_CONFIG } from "@/src/lib/cache";
+import { hash, masterPasswordHash } from "@/src/lib/auth/encryption";
 import { db } from "@/src/db";
 import { usersTable } from "@/src/db/schema";
+import { generateAuthCode } from "@/src/lib/auth/verification";
+import { sendVerificationEmail } from "@/src/lib/email/send-verification-email";
 
 type Credentials = {
   email: string;
@@ -56,20 +55,14 @@ function withError(request: Request, code: string, status: number) {
   return NextResponse.redirect(url);
 }
 
-function withSuccess(request: Request, token: string) {
-  const response = wantsJson(request)
-    ? NextResponse.json({ ok: true, token })
-    : NextResponse.redirect(new URL("/", request.url));
+function withSuccess(request: Request, email: string, emailSent: boolean) {
+  if (wantsJson(request)) {
+    return NextResponse.json({ ok: true, emailSent });
+  }
 
-  response.cookies.set("session", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-  });
-
-  return response;
+  const url = new URL("/verify-email", request.url);
+  url.searchParams.set("email", email);
+  return NextResponse.redirect(url);
 }
 
 export async function POST(req: Request) {
@@ -118,16 +111,22 @@ export async function POST(req: Request) {
     return withError(req, "insert", 500);
   }
 
-  // Derive encryption key and store in cache
-  const encryptionKey = await deriveKey(masterKey, password);
-  const sessionId = generateSessionId();
-  const keyCache = getKeyCache();
-  await keyCache.set(sessionId, encryptionKey, CACHE_CONFIG.ttlSeconds);
+  const verificationCode = await generateAuthCode(createdUserId);
 
-  const token = await signSessionToken({
-    sub: String(createdUserId),
-    email,
-    sid: sessionId,
-  });
-  return withSuccess(req, token);
+  let emailSent = false;
+  if (verificationCode) {
+    const origin = new URL(req.url).origin;
+    const verifyUrl = `${origin}/verify-email`;
+    const sent = await sendVerificationEmail({
+      to: email,
+      verifyUrl,
+      code: verificationCode
+    });
+    emailSent = sent.ok;
+    if (!sent.ok) {
+      console.error("[Auth Signup] Verification email error:", sent.error);
+    }
+  }
+
+  return withSuccess(req, email, emailSent);
 }

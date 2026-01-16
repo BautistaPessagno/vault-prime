@@ -7,6 +7,7 @@ import { Suspense, useState } from "react";
 const loginMessages: Record<string, string> = {
   missing: "Enter both email and password to continue.",
   invalid: "We could not verify those credentials.",
+  unverified: "Please verify your email to continue.",
   unexpected: "Something went wrong. Please try again.",
 };
 
@@ -29,7 +30,9 @@ function LoginFallback() {
       <div className="flex min-h-screen items-center justify-center px-6">
         <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] px-8 py-6 text-center">
           <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[color:var(--accent)] border-t-transparent"></div>
-          <p className="mt-4 text-sm text-[color:var(--muted-foreground)]">Cargando...</p>
+          <p className="mt-4 text-sm text-[color:var(--muted-foreground)]">
+            Cargando...
+          </p>
         </div>
       </div>
     </main>
@@ -76,6 +79,10 @@ function LoginContent() {
       };
 
       if (!response.ok) {
+        if (payload.error === "unverified") {
+          router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+          return;
+        }
         setErrorMessage(
           loginMessages[payload.error ?? "unexpected"] ??
             loginMessages.unexpected,
@@ -148,13 +155,13 @@ function LoginContent() {
               />
             </div>
             <div className="flex items-center justify-between text-xs text-[color:var(--muted-foreground)]">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-[color:var(--border)] text-[color:var(--accent)] focus:ring-0"
-                />
-                Remember me
-              </label>
+              {/* <label className="flex items-center gap-2"> */}
+              {/*   <input */}
+              {/*     type="checkbox" */}
+              {/*     className="h-4 w-4 rounded border-[color:var(--border)] text-[color:var(--accent)] focus:ring-0" */}
+              {/*   /> */}
+              {/*   Remember me */}
+              {/* </label> */}
               <button
                 type="button"
                 className="text-[color:var(--foreground)] transition hover:text-[color:var(--accent)]"
@@ -165,7 +172,7 @@ function LoginContent() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full rounded-xl bg-[color:var(--accent)] px-4 py-3 text-sm font-semibold text-[color:var(--foreground)] transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-70"
+              className="w-full rounded-xl bg-[color:var(--accent)] px-4 py-3 text-sm font-semibold text-[color:var(--accent-foreground)] transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isSubmitting ? "Signing in..." : "Continue"}
             </button>

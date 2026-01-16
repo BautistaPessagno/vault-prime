@@ -8,6 +8,7 @@
   --muted: #eef3fb;
   --muted-foreground: #4a5a73;
   --accent: #00f0ff;
+  --accent-foreground: #0b132b;
   --link: #000000;
   --danger: #ff4d4d;
   --success: #00c853;
@@ -33,6 +34,7 @@
     --muted: #0f1a33;
     --muted-foreground: #b3c0d8;
     --accent: #00f0ff;
+    --accent-foreground: #0b132b;
     --link: #ffffff;
     --danger: #ff4d4d;
     --success: #00c853;

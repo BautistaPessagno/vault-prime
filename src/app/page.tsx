@@ -76,6 +76,29 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const redirectForAuth = async (res: Response): Promise<boolean> => {
+    if (res.status === 401) {
+      router.push("/login");
+      return true;
+    }
+
+    if (res.status === 403) {
+      const payload = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        email?: string;
+      };
+      if (payload.error === "unverified") {
+        const emailParam = payload.email
+          ? `?email=${encodeURIComponent(payload.email)}`
+          : "";
+        router.push(`/verify-email${emailParam}`);
+        return true;
+      }
+    }
+
+    return false;
+  };
+
   useEffect(() => {
     if (!copyFlag) return;
     const { id, at } = copyFlag;
@@ -94,7 +117,10 @@ export default function Home() {
           body: JSON.stringify({ last_copied: at }),
           credentials: "include",
         });
-        if (!res.ok) throw new Error("db");
+        if (!res.ok) {
+          if (await redirectForAuth(res)) return;
+          throw new Error("db");
+        }
         const data = (await res.json()) as {
           entry?: { id: Entry["id"]; last_copied: string | null };
         };
@@ -123,10 +149,7 @@ export default function Home() {
         credentials: "include",
       });
       if (!res.ok) {
-        if (res.status === 401) {
-          router.push("/login");
-          return false;
-        }
+        if (await redirectForAuth(res)) return false;
         throw new Error("db");
       }
       const payload = (await res.json()) as { entries?: Entry[] };
@@ -216,7 +239,10 @@ export default function Home() {
         body: payload ? JSON.stringify(payload) : undefined,
         credentials: "include",
       });
-      if (!res.ok) throw new Error("db");
+      if (!res.ok) {
+        if (await redirectForAuth(res)) return null;
+        throw new Error("db");
+      }
 
       if (mode === "delete") return null;
 
@@ -365,7 +391,7 @@ export default function Home() {
           <div className="flex flex-wrap gap-3">
             <button
               onClick={handleCreate}
-              className="rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm font-semibold text-[color:var(--foreground)] transition hover:brightness-95"
+              className="rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm font-semibold text-[color:var(--accent-foreground)] transition hover:brightness-95"
             >
               Nueva entrada
             </button>
@@ -551,7 +577,7 @@ export default function Home() {
                     </button>
                     <button
                       type="submit"
-                      className="rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm font-semibold text-[color:var(--foreground)] transition hover:brightness-95"
+                      className="rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm font-semibold text-[color:var(--accent-foreground)] transition hover:brightness-95"
                     >
                       Guardar
                     </button>
@@ -818,7 +844,7 @@ export default function Home() {
                 </p>
                 <button
                   onClick={handleCreate}
-                  className="mt-5 rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm font-semibold text-[color:var(--foreground)] transition hover:brightness-95"
+                  className="mt-5 rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm font-semibold text-[color:var(--accent-foreground)] transition hover:brightness-95"
                 >
                   Crear entrada
                 </button>

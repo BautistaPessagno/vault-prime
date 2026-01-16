@@ -64,22 +64,9 @@ function SignupContent() {
         credentials: "include",
         body: JSON.stringify({ email, password }),
       });
-
-      const message = await fetch("/api/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      });
-      if (!message.ok) {
-        setErrorMessage(signupMessages.unexpected);
-        return;
-      }
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
+        emailSent?: boolean;
       };
 
       if (!response.ok) {
@@ -90,8 +77,7 @@ function SignupContent() {
         return;
       }
 
-      // Signup now automatically logs the user in with the session
-      router.push("/");
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
     } catch {
       setErrorMessage(signupMessages.unexpected);
     } finally {
@@ -152,7 +138,7 @@ function SignupContent() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full rounded-xl bg-[color:var(--accent)] px-4 py-3 text-sm font-semibold text-[color:var(--foreground)] transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-70"
+              className="w-full rounded-xl bg-[color:var(--accent)] px-4 py-3 text-sm font-semibold text-[color:var(--accent-foreground)] transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isSubmitting ? "Creating..." : "Create account"}
             </button>
