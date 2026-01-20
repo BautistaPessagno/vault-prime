@@ -10,6 +10,7 @@ type Entry = {
   username: string;
   url: string;
   password: string;
+  created_at: string | null;
   last_edited: string | null;
   last_copied: string | null;
 };
@@ -801,13 +802,25 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-[color:var(--border)] p-4 md:col-span-2">
-                    <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
-                      Last copied
-                    </label>
-                    <p className="mt-3 text-sm text-[color:var(--muted-foreground)]">
-                      {formatLastCopied(activeEntry.last_copied)}
-                    </p>
+                  <div className="grid grid-cols-2 gap-4 md:col-span-2">
+                    <div className="rounded-xl border border-[color:var(--border)] p-4">
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
+                        Last copied
+                      </label>
+                      <p className="mt-3 text-sm text-[color:var(--muted-foreground)]">
+                        {formatLastCopied(activeEntry.last_copied)}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-[color:var(--border)] p-4">
+                      <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
+                        Created
+                      </label>
+                      <p className="mt-3 text-sm text-[color:var(--muted-foreground)]">
+                        {activeEntry.created_at
+                          ? new Date(activeEntry.created_at).toLocaleString()
+                          : "Unknown"}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
