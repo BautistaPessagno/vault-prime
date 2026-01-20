@@ -10,7 +10,6 @@ export type EntryRow = {
   username: string;
   password: string;
   url: string;
-  created_at: string | null;
   last_edited: string | null;
   last_copied: string | null;
 };
