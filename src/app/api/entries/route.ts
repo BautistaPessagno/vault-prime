@@ -46,6 +46,7 @@ export async function GET() {
         username: entriesTable.username,
         password: entriesTable.password,
         url: entriesTable.url,
+        created_at: entriesTable.created_at,
         last_edited: entriesTable.last_edited,
         last_copied: entriesTable.last_copied,
       })
@@ -139,6 +140,7 @@ export async function POST(req: Request) {
         username: entriesTable.username,
         password: entriesTable.password,
         url: entriesTable.url,
+        created_at: entriesTable.created_at,
         last_edited: entriesTable.last_edited,
         last_copied: entriesTable.last_copied,
       });
