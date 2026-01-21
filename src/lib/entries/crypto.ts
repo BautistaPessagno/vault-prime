@@ -106,13 +106,13 @@ export async function decryptEntryFields(
   };
 }
 
-async function encryptValue(value: string, key: string) {
+export async function encryptValue(value: string, key: string) {
   const nonce = await generateNonce();
   const ciphertext = await encrypt(key, nonce, value);
   return `${nonce}:${ciphertext}`;
 }
 
-async function decryptValue(value: string, key: string) {
+export async function decryptValue(value: string, key: string) {
   if (!value) {
     return "";
   }

@@ -28,7 +28,7 @@ export async function verify(password: string, hashedPassword: string) {
 
 // ----------------------------- derivation key ------------------------------------------------
 
-// este hash se va a usar como key para el aes-256-gcm
+// este hash se va a usar como key para el aes-256-gcm con el cual se encrypta y decrypta el encryption_key
 //el payloead es el master key y el salt es la password
 export async function deriveKey(payload: string, salt: string) {
   const enc = new TextEncoder();
@@ -43,6 +43,11 @@ export async function deriveKey(payload: string, salt: string) {
 }
 
 // ----------------------------- aes-256-gcm key ------------------------------------------------
+
+// generate encryption key
+export async function generateEncryptionKey() {
+  return bytesToHex(randomBytes(32));
+}
 
 export async function generateNonce() {
   return bytesToHex(randomBytes(24));

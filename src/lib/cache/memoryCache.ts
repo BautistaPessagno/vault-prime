@@ -6,7 +6,14 @@ type CacheEntry = {
   expiresAt: number;
 };
 
-const cache = new Map<string, CacheEntry>();
+// Use globalThis to persist cache Map across hot reloads in development
+declare global {
+  // eslint-disable-next-line no-var
+  var __memoryCacheMap: Map<string, CacheEntry> | undefined;
+}
+
+const cache = globalThis.__memoryCacheMap ?? new Map<string, CacheEntry>();
+globalThis.__memoryCacheMap = cache;
 
 function cleanupExpired() {
   const now = Date.now();

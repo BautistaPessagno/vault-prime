@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { hash, masterPasswordHash } from "@/src/lib/auth/encryption";
+import {
+  hash,
+  masterPasswordHash,
+  generateEncryptionKey,
+  deriveKey,
+} from "@/src/lib/auth/encryption";
+import { encryptValue } from "@/src/lib/entries/crypto";
 import { db } from "@/src/db";
 import { usersTable } from "@/src/db/schema";
 import { generateAuthCode } from "@/src/lib/auth/verification";
@@ -91,6 +97,10 @@ export async function POST(req: Request) {
   const salt = Buffer.from(email);
   const masterKey = await hash(password, salt);
   const masterPasswordHashValue = await masterPasswordHash(masterKey);
+  const strechedMasterKey = await deriveKey(masterKey, password);
+  const encryptionKey = await generateEncryptionKey();
+
+  const encryptedKey = await encryptValue(encryptionKey, strechedMasterKey);
 
   let createdUserId: string | undefined;
   try {
@@ -99,6 +109,7 @@ export async function POST(req: Request) {
       .values({
         email,
         master_password_hash: masterPasswordHashValue,
+        encryption_key: encryptedKey,
       })
       .returning({ id: usersTable.id });
     createdUserId = created[0]?.id;
@@ -120,7 +131,7 @@ export async function POST(req: Request) {
     const sent = await sendVerificationEmail({
       to: email,
       verifyUrl,
-      code: verificationCode
+      code: verificationCode,
     });
     emailSent = sent.ok;
     if (!sent.ok) {
