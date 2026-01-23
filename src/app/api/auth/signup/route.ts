@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { hash, masterPasswordHash } from "@/src/lib/auth/encryption";
+import {
+  hash,
+  masterPasswordHash,
+  generateEncryptionKey,
+  deriveKey,
+} from "@/src/lib/auth/encryption";
+import { encryptValue } from "@/src/lib/entries/crypto";
 import { db } from "@/src/db";
 import { usersTable } from "@/src/db/schema";
 import { generateAuthCode } from "@/src/lib/auth/verification";
@@ -9,6 +15,7 @@ import { sendVerificationEmail } from "@/src/lib/email/send-verification-email";
 type Credentials = {
   email: string;
   password: string;
+  passwordConfirmation: string;
 };
 
 function normalizeEmail(value: FormDataEntryValue | string | null) {
@@ -35,6 +42,7 @@ async function readCredentials(request: Request): Promise<Credentials> {
     return {
       email: normalizeEmail(body?.email),
       password: normalizePassword(body?.password),
+      passwordConfirmation: normalizePassword(body?.passwordConfirmation),
     };
   }
 
@@ -42,6 +50,7 @@ async function readCredentials(request: Request): Promise<Credentials> {
   return {
     email: normalizeEmail(formData.get("email")),
     password: normalizePassword(formData.get("password")),
+    passwordConfirmation: normalizePassword(formData.get("passwordConfirmation")),
   };
 }
 
@@ -66,9 +75,13 @@ function withSuccess(request: Request, email: string, emailSent: boolean) {
 }
 
 export async function POST(req: Request) {
-  const { email, password } = await readCredentials(req);
-  if (!email || !password) {
+  const { email, password, passwordConfirmation } = await readCredentials(req);
+  if (!email || !password || !passwordConfirmation) {
     return withError(req, "missing", 400);
+  }
+
+  if (password !== passwordConfirmation) {
+    return withError(req, "password_mismatch", 400);
   }
 
   let existingId: string | undefined;
@@ -91,6 +104,10 @@ export async function POST(req: Request) {
   const salt = Buffer.from(email);
   const masterKey = await hash(password, salt);
   const masterPasswordHashValue = await masterPasswordHash(masterKey);
+  const strechedMasterKey = await deriveKey(masterKey, password);
+  const encryptionKey = await generateEncryptionKey();
+
+  const encryptedKey = await encryptValue(encryptionKey, strechedMasterKey);
 
   let createdUserId: string | undefined;
   try {
@@ -99,6 +116,7 @@ export async function POST(req: Request) {
       .values({
         email,
         master_password_hash: masterPasswordHashValue,
+        encryption_key: encryptedKey,
       })
       .returning({ id: usersTable.id });
     createdUserId = created[0]?.id;
@@ -120,7 +138,7 @@ export async function POST(req: Request) {
     const sent = await sendVerificationEmail({
       to: email,
       verifyUrl,
-      code: verificationCode
+      code: verificationCode,
     });
     emailSent = sent.ok;
     if (!sent.ok) {

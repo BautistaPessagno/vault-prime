@@ -14,6 +14,7 @@ const loginMessages: Record<string, string> = {
 const loginSuccess: Record<string, string> = {
   created: "Account created. Sign in to continue.",
   ok: "You are signed in.",
+  password_changed: "Password changed successfully. Sign in with your new password.",
 };
 
 export default function LoginPage() {
@@ -153,21 +154,6 @@ function LoginContent() {
                 autoComplete="current-password"
                 className="w-full rounded-xl border border-[color:var(--border)] bg-transparent px-4 py-3 text-sm outline-none transition focus:border-[color:var(--accent)]"
               />
-            </div>
-            <div className="flex items-center justify-between text-xs text-[color:var(--muted-foreground)]">
-              {/* <label className="flex items-center gap-2"> */}
-              {/*   <input */}
-              {/*     type="checkbox" */}
-              {/*     className="h-4 w-4 rounded border-[color:var(--border)] text-[color:var(--accent)] focus:ring-0" */}
-              {/*   /> */}
-              {/*   Remember me */}
-              {/* </label> */}
-              <button
-                type="button"
-                className="text-[color:var(--foreground)] transition hover:text-[color:var(--accent)]"
-              >
-                Forgot password?
-              </button>
             </div>
             <button
               type="submit"

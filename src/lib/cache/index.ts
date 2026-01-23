@@ -4,21 +4,25 @@ import { memoryCache } from "./memoryCache";
 export type { KeyCache } from "./keyCache";
 export { CACHE_CONFIG } from "./config";
 
-let cacheInstance: KeyCache | null = null;
+// Use globalThis to persist cache across hot reloads in development
+declare global {
+  // eslint-disable-next-line no-var
+  var __keyCacheInstance: KeyCache | undefined;
+}
 
 export function getKeyCache(): KeyCache {
-  if (cacheInstance) {
-    return cacheInstance;
+  if (globalThis.__keyCacheInstance) {
+    return globalThis.__keyCacheInstance;
   }
 
   if (process.env.REDIS_URL) {
     // Dynamically import Redis cache only when needed
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { redisCache } = require("./redisCache");
-    cacheInstance = redisCache as KeyCache;
+    globalThis.__keyCacheInstance = redisCache as KeyCache;
   } else {
-    cacheInstance = memoryCache;
+    globalThis.__keyCacheInstance = memoryCache;
   }
 
-  return cacheInstance!;
+  return globalThis.__keyCacheInstance!;
 }

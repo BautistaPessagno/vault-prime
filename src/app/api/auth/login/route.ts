@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { hash, verify, deriveKey } from "@/src/lib/auth/encryption";
+import { decryptValue } from "@/src/lib/entries/crypto";
 import { signSessionToken } from "@/src/lib/auth/jwt";
 import { generateSessionId } from "@/src/lib/auth/session";
+import { migrateLegacyUser } from "@/src/lib/auth/migration";
 import { getKeyCache, CACHE_CONFIG } from "@/src/lib/cache";
 import { db } from "@/src/db";
 import { usersTable } from "@/src/db/schema";
@@ -16,6 +18,7 @@ type LoginUserRow = {
   id: string;
   master_password_hash: string;
   verified_at: Date | null;
+  encryption_key: string | null;
 };
 
 function normalizeEmail(value: FormDataEntryValue | string | null) {
@@ -90,6 +93,7 @@ export async function POST(req: Request) {
         id: usersTable.id,
         master_password_hash: usersTable.master_password_hash,
         verified_at: usersTable.verified_at,
+        encryption_key: usersTable.encryption_key,
       })
       .from(usersTable)
       .where(eq(usersTable.email, email))
@@ -115,8 +119,19 @@ export async function POST(req: Request) {
     return withError(req, "unverified", 403);
   }
 
-  // Derive encryption key and store in cache
-  const encryptionKey = await deriveKey(masterKey, password);
+  // Derive streched master key
+  const strechedMasterKey = await deriveKey(masterKey, password);
+  let encryptionKey: string;
+
+  if (!user.encryption_key) {
+    // Legacy user without encryption_key - migrate to new model
+    encryptionKey = await migrateLegacyUser(user.id, strechedMasterKey);
+  } else {
+    // User with encryption_key - decrypt it
+    encryptionKey = await decryptValue(user.encryption_key, strechedMasterKey);
+  }
+
+  // Store encryption key in cache
   const sessionId = generateSessionId();
   const keyCache = getKeyCache();
   await keyCache.set(sessionId, encryptionKey, CACHE_CONFIG.ttlSeconds);
