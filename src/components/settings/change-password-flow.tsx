@@ -11,6 +11,9 @@ export default function ChangePasswordFlow() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isCurrentVisible, setIsCurrentVisible] = useState(false);
+  const [isNewVisible, setIsNewVisible] = useState(false);
+  const [isConfirmVisible, setIsConfirmVisible] = useState(false);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -100,19 +103,61 @@ export default function ChangePasswordFlow() {
               >
                 Contraseña actual
               </label>
-              <input
-                id="currentPassword"
-                type="password"
-                value={currentPassword}
-                onChange={(event) => {
-                  setCurrentPassword(event.target.value);
-                  setError(null);
-                }}
-                placeholder="Ingresa tu contraseña actual"
-                autoFocus
-                disabled={isLoading}
-                className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-[color:var(--foreground)] transition-colors placeholder:text-[color:var(--muted-foreground)] focus:border-[color:var(--accent)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-              />
+              <div className="relative">
+                <input
+                  id="currentPassword"
+                  type={isCurrentVisible ? "text" : "password"}
+                  value={currentPassword}
+                  onChange={(event) => {
+                    setCurrentPassword(event.target.value);
+                    setError(null);
+                  }}
+                  placeholder="Ingresa tu contraseña actual"
+                  autoFocus
+                  disabled={isLoading}
+                  className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 pr-12 text-[color:var(--foreground)] transition-colors placeholder:text-[color:var(--muted-foreground)] focus:border-[color:var(--accent)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsCurrentVisible((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--muted-foreground)] transition hover:text-[color:var(--foreground)]"
+                  aria-label={
+                    isCurrentVisible ? "Ocultar contraseña" : "Mostrar contraseña"
+                  }
+                >
+                  {isCurrentVisible ? (
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z" />
+                      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+                      <path d="M14.1 9.9a3 3 0 0 0-4.2 4.2" />
+                      <path d="M4 4l16 16" />
+                    </svg>
+                  ) : (
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z" />
+                      <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
 
             <div>
@@ -122,18 +167,60 @@ export default function ChangePasswordFlow() {
               >
                 Nueva contraseña
               </label>
-              <input
-                id="newPassword"
-                type="password"
-                value={newPassword}
-                onChange={(event) => {
-                  setNewPassword(event.target.value);
-                  setError(null);
-                }}
-                placeholder="Mínimo 8 caracteres"
-                disabled={isLoading}
-                className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-[color:var(--foreground)] transition-colors placeholder:text-[color:var(--muted-foreground)] focus:border-[color:var(--accent)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-              />
+              <div className="relative">
+                <input
+                  id="newPassword"
+                  type={isNewVisible ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(event) => {
+                    setNewPassword(event.target.value);
+                    setError(null);
+                  }}
+                  placeholder="Mínimo 8 caracteres"
+                  disabled={isLoading}
+                  className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 pr-12 text-[color:var(--foreground)] transition-colors placeholder:text-[color:var(--muted-foreground)] focus:border-[color:var(--accent)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsNewVisible((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--muted-foreground)] transition hover:text-[color:var(--foreground)]"
+                  aria-label={
+                    isNewVisible ? "Ocultar contraseña" : "Mostrar contraseña"
+                  }
+                >
+                  {isNewVisible ? (
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z" />
+                      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+                      <path d="M14.1 9.9a3 3 0 0 0-4.2 4.2" />
+                      <path d="M4 4l16 16" />
+                    </svg>
+                  ) : (
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z" />
+                      <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
 
             <div>
@@ -143,18 +230,60 @@ export default function ChangePasswordFlow() {
               >
                 Confirmar nueva contraseña
               </label>
-              <input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(event) => {
-                  setConfirmPassword(event.target.value);
-                  setError(null);
-                }}
-                placeholder="Repite tu nueva contraseña"
-                disabled={isLoading}
-                className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-[color:var(--foreground)] transition-colors placeholder:text-[color:var(--muted-foreground)] focus:border-[color:var(--accent)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-              />
+              <div className="relative">
+                <input
+                  id="confirmPassword"
+                  type={isConfirmVisible ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(event) => {
+                    setConfirmPassword(event.target.value);
+                    setError(null);
+                  }}
+                  placeholder="Repite tu nueva contraseña"
+                  disabled={isLoading}
+                  className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 pr-12 text-[color:var(--foreground)] transition-colors placeholder:text-[color:var(--muted-foreground)] focus:border-[color:var(--accent)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsConfirmVisible((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--muted-foreground)] transition hover:text-[color:var(--foreground)]"
+                  aria-label={
+                    isConfirmVisible ? "Ocultar contraseña" : "Mostrar contraseña"
+                  }
+                >
+                  {isConfirmVisible ? (
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z" />
+                      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+                      <path d="M14.1 9.9a3 3 0 0 0-4.2 4.2" />
+                      <path d="M4 4l16 16" />
+                    </svg>
+                  ) : (
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z" />
+                      <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
 
             {error && (

@@ -41,8 +41,6 @@ function VerifyEmailContent() {
   >("idle");
   const [resendMessage, setResendMessage] = useState<string | null>(null);
 
-  // Track if initial email was sent
-  const initialSendAttempted = useRef(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -71,6 +69,14 @@ function VerifyEmailContent() {
         body: JSON.stringify({ code: trimmedCode }),
       });
 
+      if (res.redirected) {
+        const redirectUrl = new URL(res.url);
+        router.replace(
+          `${redirectUrl.pathname}${redirectUrl.search}${redirectUrl.hash}`,
+        );
+        return;
+      }
+
       const payload = (await res.json().catch(() => ({}))) as {
         error?: string;
       };
@@ -91,7 +97,7 @@ function VerifyEmailContent() {
         return;
       }
 
-      router.replace("/verify-email/success");
+      router.replace("/login");
     } catch {
       setError("An unexpected error occurred. Please try again.");
       setIsLoading(false);
@@ -124,13 +130,6 @@ function VerifyEmailContent() {
     }
   }, [email, resendStatus]);
 
-  // Auto-send verification email on mount
-  useEffect(() => {
-    if (email && !initialSendAttempted.current) {
-      initialSendAttempted.current = true;
-      handleResend();
-    }
-  }, [email, handleResend]);
 
   return (
     <main className="min-h-screen bg-[color:var(--background)] text-[color:var(--foreground)]">
