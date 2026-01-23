@@ -130,20 +130,17 @@ export async function POST(req: Request) {
       values.last_copied = lastCopied;
     }
 
-    const inserted = await db
-      .insert(entriesTable)
-      .values(values)
-      .returning({
-        id: entriesTable.id,
-        user_id: entriesTable.user_id,
-        name: entriesTable.name,
-        username: entriesTable.username,
-        password: entriesTable.password,
-        url: entriesTable.url,
-        created_at: entriesTable.created_at,
-        last_edited: entriesTable.last_edited,
-        last_copied: entriesTable.last_copied,
-      });
+    const inserted = await db.insert(entriesTable).values(values).returning({
+      id: entriesTable.id,
+      user_id: entriesTable.user_id,
+      name: entriesTable.name,
+      username: entriesTable.username,
+      password: entriesTable.password,
+      url: entriesTable.url,
+      created_at: entriesTable.created_at,
+      last_edited: entriesTable.last_edited,
+      last_copied: entriesTable.last_copied,
+    });
     entryRow = inserted[0] ?? null;
   } catch (error) {
     console.error("[Entries POST] Database error:", error);

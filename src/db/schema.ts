@@ -22,7 +22,9 @@ export const entriesTable = pgTable("entries", {
   url: text("url").notNull(),
   last_edited: timestamp("updated_at", { withTimezone: true, mode: "string" }),
   last_copied: timestamp("copied_at", { withTimezone: true, mode: "string" }),
-  created_at: timestamp("created_at", { withTimezone: true, mode: "string" }),
+  created_at: timestamp("created_at", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
 });
 
 export const emailVerificationCodesTable = pgTable("email_verification_codes", {

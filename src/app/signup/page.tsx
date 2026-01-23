@@ -6,6 +6,7 @@ import { Suspense, useState, type FormEvent } from "react";
 
 const signupMessages: Record<string, string> = {
   missing: "Enter an email and password to create your account.",
+  password_mismatch: "Passwords do not match.",
   exists: "That email already has an account.",
   db: "We could not reach the database. Try again soon.",
   insert: "We could not create your account. Try again.",
@@ -48,11 +49,23 @@ function SignupContent() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage(null);
-    setIsSubmitting(true);
 
     const formData = new FormData(event.currentTarget);
     const email = String(formData.get("email") ?? "");
     const password = String(formData.get("password") ?? "");
+    const confirmPassword = String(formData.get("confirmPassword") ?? "");
+
+    if (!email || !password || !confirmPassword) {
+      setErrorMessage(signupMessages.missing);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setErrorMessage(signupMessages.password_mismatch);
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
       const response = await fetch("/api/auth/signup", {
@@ -62,7 +75,11 @@ function SignupContent() {
           Accept: "application/json",
         },
         credentials: "include",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          email,
+          password,
+          passwordConfirmation: confirmPassword,
+        }),
       });
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
@@ -131,6 +148,18 @@ function SignupContent() {
                 name="password"
                 type="password"
                 placeholder="Create a password"
+                autoComplete="new-password"
+                className="w-full rounded-xl border border-[color:var(--border)] bg-transparent px-4 py-3 text-sm outline-none transition focus:border-[color:var(--accent)]"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
+                Confirm Password
+              </label>
+              <input
+                name="confirmPassword"
+                type="password"
+                placeholder="Repeat your password"
                 autoComplete="new-password"
                 className="w-full rounded-xl border border-[color:var(--border)] bg-transparent px-4 py-3 text-sm outline-none transition focus:border-[color:var(--accent)]"
               />

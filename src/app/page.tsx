@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
@@ -390,6 +391,12 @@ export default function Home() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
+            <Link
+              href="/settings"
+              className="rounded-full border border-[color:var(--border)] px-4 py-2 text-sm font-semibold text-[color:var(--foreground)] transition hover:border-[color:var(--accent)]"
+            >
+              Settings
+            </Link>
             <button
               onClick={handleCreate}
               className="rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm font-semibold text-[color:var(--accent-foreground)] transition hover:brightness-95"
