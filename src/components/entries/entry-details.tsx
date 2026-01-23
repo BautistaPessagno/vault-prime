@@ -1,6 +1,6 @@
 "use client";
 
-import type { Entry } from "@/types/entries";
+import type { Entry } from "@/src/types/entries";
 
 type EntryDetailsProps = {
   entry: Entry;
@@ -57,7 +57,11 @@ export default function EntryDetails({
           <div className="mt-3 flex items-center justify-between gap-3">
             {entry.url ? (
               <a
-                href={entry.url.startsWith("http") ? entry.url : `https://${entry.url}`}
+                href={
+                  entry.url.startsWith("http")
+                    ? entry.url
+                    : `https://${entry.url}`
+                }
                 target="_blank"
                 rel="noopener noreferrer"
                 className="truncate text-sm font-semibold text-[color:var(--link)]"
@@ -209,7 +213,9 @@ export default function EntryDetails({
               Created
             </label>
             <p className="mt-3 text-sm text-[color:var(--muted-foreground)]">
-              {entry.created_at ? new Date(entry.created_at).toLocaleString() : "Unknown"}
+              {entry.created_at
+                ? new Date(entry.created_at).toLocaleString()
+                : "Unknown"}
             </p>
           </div>
         </div>

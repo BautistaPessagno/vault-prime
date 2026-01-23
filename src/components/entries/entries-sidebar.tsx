@@ -1,6 +1,6 @@
 "use client";
 
-import type { Entry } from "@/types/entries";
+import type { Entry } from "@/src/types/entries";
 
 type EntriesSidebarProps = {
   entries: Entry[];

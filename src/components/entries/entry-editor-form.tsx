@@ -1,6 +1,6 @@
 "use client";
 
-import type { EntryDraft } from "@/types/entries";
+import type { EntryDraft } from "@/src/types/entries";
 
 type EntryEditorFormProps = {
   draft: EntryDraft;
