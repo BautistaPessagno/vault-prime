@@ -20,19 +20,19 @@ export default function ChangePasswordFlow() {
     setError(null);
 
     if (!currentPassword) {
-      setError("Ingresa tu contraseña actual.");
+      setError("Enter your current password.");
       return;
     }
     if (!newPassword) {
-      setError("Ingresa tu nueva contraseña.");
+      setError("Enter your new password.");
       return;
     }
     if (newPassword.length < 8) {
-      setError("La contraseña debe tener al menos 8 caracteres.");
+      setError("Password must be at least 8 characters.");
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError("Las contraseñas no coinciden.");
+      setError("Passwords do not match.");
       return;
     }
 
@@ -59,13 +59,13 @@ export default function ChangePasswordFlow() {
         const errorCode = payload.error ?? "unknown";
 
         if (errorCode === "invalid_password") {
-          setError("La contraseña actual es incorrecta.");
+          setError("Your current password is incorrect.");
         } else if (errorCode === "unauthorized") {
-          setError("Debes iniciar sesión para cambiar tu contraseña.");
+          setError("You must be logged in to change your password.");
         } else if (errorCode === "missing_fields") {
-          setError("Completa todos los campos requeridos.");
+          setError("Please complete all required fields.");
         } else {
-          setError("Ocurrió un error. Intenta nuevamente.");
+          setError("Something went wrong. Please try again.");
         }
         setIsLoading(false);
         return;
@@ -73,7 +73,7 @@ export default function ChangePasswordFlow() {
 
       router.replace("/login?message=password_changed");
     } catch {
-      setError("Ocurrió un error inesperado. Intenta nuevamente.");
+      setError("An unexpected error occurred. Please try again.");
       setIsLoading(false);
     }
   };
@@ -88,9 +88,9 @@ export default function ChangePasswordFlow() {
           <p className="text-xs font-semibold uppercase tracking-[0.4em] text-[color:var(--muted-foreground)]">
             Vault Prime
           </p>
-          <h1 className="text-3xl font-semibold">Cambiar contraseña</h1>
+          <h1 className="text-3xl font-semibold">Change password</h1>
           <p className="text-sm text-[color:var(--muted-foreground)]">
-            Actualiza tu contraseña de forma segura.
+            Update your password securely.
           </p>
         </header>
 
@@ -101,7 +101,7 @@ export default function ChangePasswordFlow() {
                 htmlFor="currentPassword"
                 className="mb-2 block text-sm font-medium text-[color:var(--foreground)]"
               >
-                Contraseña actual
+                Current password
               </label>
               <div className="relative">
                 <input
@@ -112,7 +112,7 @@ export default function ChangePasswordFlow() {
                     setCurrentPassword(event.target.value);
                     setError(null);
                   }}
-                  placeholder="Ingresa tu contraseña actual"
+                  placeholder="Enter your current password"
                   autoFocus
                   disabled={isLoading}
                   className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 pr-12 text-[color:var(--foreground)] transition-colors placeholder:text-[color:var(--muted-foreground)] focus:border-[color:var(--accent)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
@@ -122,7 +122,7 @@ export default function ChangePasswordFlow() {
                   onClick={() => setIsCurrentVisible((prev) => !prev)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--muted-foreground)] transition hover:text-[color:var(--foreground)]"
                   aria-label={
-                    isCurrentVisible ? "Ocultar contraseña" : "Mostrar contraseña"
+                    isCurrentVisible ? "Hide password" : "Show password"
                   }
                 >
                   {isCurrentVisible ? (
@@ -165,7 +165,7 @@ export default function ChangePasswordFlow() {
                 htmlFor="newPassword"
                 className="mb-2 block text-sm font-medium text-[color:var(--foreground)]"
               >
-                Nueva contraseña
+                New password
               </label>
               <div className="relative">
                 <input
@@ -176,7 +176,7 @@ export default function ChangePasswordFlow() {
                     setNewPassword(event.target.value);
                     setError(null);
                   }}
-                  placeholder="Mínimo 8 caracteres"
+                  placeholder="At least 8 characters"
                   disabled={isLoading}
                   className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 pr-12 text-[color:var(--foreground)] transition-colors placeholder:text-[color:var(--muted-foreground)] focus:border-[color:var(--accent)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                 />
@@ -184,9 +184,7 @@ export default function ChangePasswordFlow() {
                   type="button"
                   onClick={() => setIsNewVisible((prev) => !prev)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--muted-foreground)] transition hover:text-[color:var(--foreground)]"
-                  aria-label={
-                    isNewVisible ? "Ocultar contraseña" : "Mostrar contraseña"
-                  }
+                  aria-label={isNewVisible ? "Hide password" : "Show password"}
                 >
                   {isNewVisible ? (
                     <svg
@@ -228,7 +226,7 @@ export default function ChangePasswordFlow() {
                 htmlFor="confirmPassword"
                 className="mb-2 block text-sm font-medium text-[color:var(--foreground)]"
               >
-                Confirmar nueva contraseña
+                Confirm new password
               </label>
               <div className="relative">
                 <input
@@ -239,7 +237,7 @@ export default function ChangePasswordFlow() {
                     setConfirmPassword(event.target.value);
                     setError(null);
                   }}
-                  placeholder="Repite tu nueva contraseña"
+                  placeholder="Re-enter your new password"
                   disabled={isLoading}
                   className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 pr-12 text-[color:var(--foreground)] transition-colors placeholder:text-[color:var(--muted-foreground)] focus:border-[color:var(--accent)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                 />
@@ -248,7 +246,7 @@ export default function ChangePasswordFlow() {
                   onClick={() => setIsConfirmVisible((prev) => !prev)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--muted-foreground)] transition hover:text-[color:var(--foreground)]"
                   aria-label={
-                    isConfirmVisible ? "Ocultar contraseña" : "Mostrar contraseña"
+                    isConfirmVisible ? "Hide password" : "Show password"
                   }
                 >
                   {isConfirmVisible ? (
@@ -297,7 +295,7 @@ export default function ChangePasswordFlow() {
               disabled={isSubmitDisabled}
               className="w-full rounded-lg bg-[color:var(--accent)] px-4 py-3 text-sm font-semibold text-[color:var(--accent-foreground)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isLoading ? "Cambiando..." : "Cambiar contraseña"}
+              {isLoading ? "Updating..." : "Change password"}
             </button>
           </form>
         </section>
@@ -307,7 +305,7 @@ export default function ChangePasswordFlow() {
             href="/settings"
             className="text-[color:var(--accent)] hover:underline"
           >
-            Volver a configuración
+            Back to settings
           </Link>
         </p>
       </div>

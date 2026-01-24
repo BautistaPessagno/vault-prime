@@ -8,7 +8,7 @@ type ProfileResponse = {
   createdAt: string | null;
 };
 
-const dateFormatter = new Intl.DateTimeFormat("es-ES", {
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
   month: "long",
   day: "numeric",
@@ -34,8 +34,8 @@ export default function SettingsPage() {
           }
           setError(
             response.status === 401
-              ? "Debes iniciar sesión para ver tu perfil."
-              : "No pudimos cargar tu perfil. Intenta nuevamente.",
+              ? "You must be logged in to view your profile."
+              : "We couldn't load your profile. Please try again.",
           );
           setIsLoading(false);
           return;
@@ -51,7 +51,7 @@ export default function SettingsPage() {
         if (!isActive) {
           return;
         }
-        setError("Ocurrió un error inesperado. Intenta nuevamente.");
+        setError("An unexpected error occurred. Please try again.");
         setIsLoading(false);
       }
     };
@@ -75,23 +75,23 @@ export default function SettingsPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.4em] text-[color:var(--muted-foreground)]">
             Vault Prime
           </p>
-          <h1 className="text-3xl font-semibold">Configuración</h1>
+          <h1 className="text-3xl font-semibold">Settings</h1>
           <p className="text-sm text-[color:var(--muted-foreground)]">
-            Administra tu perfil y seguridad.
+            Manage your profile and security.
           </p>
         </header>
 
         <section className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-6">
           <div className="mb-6 space-y-2">
-            <h2 className="text-2xl font-semibold">Perfil</h2>
+            <h2 className="text-2xl font-semibold">Profile</h2>
             <p className="text-sm text-[color:var(--muted-foreground)]">
-              Estos datos se usan para identificar tu cuenta.
+              These details are used to identify your account.
             </p>
           </div>
 
           {isLoading && (
             <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-4 text-sm text-[color:var(--muted-foreground)]">
-              Cargando tu información...
+              Loading your information...
             </div>
           )}
 
@@ -112,7 +112,7 @@ export default function SettingsPage() {
 
               <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
-                  Fecha de creación
+                  Created date
                 </p>
                 <p className="mt-2 text-sm font-medium">{createdAtLabel}</p>
               </div>
@@ -124,13 +124,13 @@ export default function SettingsPage() {
               href="/settings/password"
               className="block rounded-xl bg-[color:var(--accent)] px-4 py-3 text-center text-sm font-semibold text-[color:var(--accent-foreground)] transition hover:brightness-95"
             >
-              Cambiar contraseña
+              Change password
             </Link>
             <Link
               href="/"
               className="block rounded-xl border border-[color:var(--border)] px-4 py-3 text-center text-sm font-semibold text-[color:var(--foreground)] transition hover:border-[color:var(--accent)]"
             >
-              Volver al vault
+              Back to vault
             </Link>
           </div>
         </section>
