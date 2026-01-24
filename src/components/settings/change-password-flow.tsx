@@ -11,25 +11,28 @@ export default function ChangePasswordFlow() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isCurrentVisible, setIsCurrentVisible] = useState(false);
+  const [isNewVisible, setIsNewVisible] = useState(false);
+  const [isConfirmVisible, setIsConfirmVisible] = useState(false);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
 
     if (!currentPassword) {
-      setError("Ingresa tu contraseña actual.");
+      setError("Enter your current password.");
       return;
     }
     if (!newPassword) {
-      setError("Ingresa tu nueva contraseña.");
+      setError("Enter your new password.");
       return;
     }
     if (newPassword.length < 8) {
-      setError("La contraseña debe tener al menos 8 caracteres.");
+      setError("Password must be at least 8 characters.");
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError("Las contraseñas no coinciden.");
+      setError("Passwords do not match.");
       return;
     }
 
@@ -56,13 +59,13 @@ export default function ChangePasswordFlow() {
         const errorCode = payload.error ?? "unknown";
 
         if (errorCode === "invalid_password") {
-          setError("La contraseña actual es incorrecta.");
+          setError("Your current password is incorrect.");
         } else if (errorCode === "unauthorized") {
-          setError("Debes iniciar sesión para cambiar tu contraseña.");
+          setError("You must be logged in to change your password.");
         } else if (errorCode === "missing_fields") {
-          setError("Completa todos los campos requeridos.");
+          setError("Please complete all required fields.");
         } else {
-          setError("Ocurrió un error. Intenta nuevamente.");
+          setError("Something went wrong. Please try again.");
         }
         setIsLoading(false);
         return;
@@ -70,7 +73,7 @@ export default function ChangePasswordFlow() {
 
       router.replace("/login?message=password_changed");
     } catch {
-      setError("Ocurrió un error inesperado. Intenta nuevamente.");
+      setError("An unexpected error occurred. Please try again.");
       setIsLoading(false);
     }
   };
@@ -85,9 +88,9 @@ export default function ChangePasswordFlow() {
           <p className="text-xs font-semibold uppercase tracking-[0.4em] text-[color:var(--muted-foreground)]">
             Vault Prime
           </p>
-          <h1 className="text-3xl font-semibold">Cambiar contraseña</h1>
+          <h1 className="text-3xl font-semibold">Change password</h1>
           <p className="text-sm text-[color:var(--muted-foreground)]">
-            Actualiza tu contraseña de forma segura.
+            Update your password securely.
           </p>
         </header>
 
@@ -98,21 +101,63 @@ export default function ChangePasswordFlow() {
                 htmlFor="currentPassword"
                 className="mb-2 block text-sm font-medium text-[color:var(--foreground)]"
               >
-                Contraseña actual
+                Current password
               </label>
-              <input
-                id="currentPassword"
-                type="password"
-                value={currentPassword}
-                onChange={(event) => {
-                  setCurrentPassword(event.target.value);
-                  setError(null);
-                }}
-                placeholder="Ingresa tu contraseña actual"
-                autoFocus
-                disabled={isLoading}
-                className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-[color:var(--foreground)] transition-colors placeholder:text-[color:var(--muted-foreground)] focus:border-[color:var(--accent)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-              />
+              <div className="relative">
+                <input
+                  id="currentPassword"
+                  type={isCurrentVisible ? "text" : "password"}
+                  value={currentPassword}
+                  onChange={(event) => {
+                    setCurrentPassword(event.target.value);
+                    setError(null);
+                  }}
+                  placeholder="Enter your current password"
+                  autoFocus
+                  disabled={isLoading}
+                  className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 pr-12 text-[color:var(--foreground)] transition-colors placeholder:text-[color:var(--muted-foreground)] focus:border-[color:var(--accent)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsCurrentVisible((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--muted-foreground)] transition hover:text-[color:var(--foreground)]"
+                  aria-label={
+                    isCurrentVisible ? "Hide password" : "Show password"
+                  }
+                >
+                  {isCurrentVisible ? (
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z" />
+                      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+                      <path d="M14.1 9.9a3 3 0 0 0-4.2 4.2" />
+                      <path d="M4 4l16 16" />
+                    </svg>
+                  ) : (
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z" />
+                      <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
 
             <div>
@@ -120,20 +165,60 @@ export default function ChangePasswordFlow() {
                 htmlFor="newPassword"
                 className="mb-2 block text-sm font-medium text-[color:var(--foreground)]"
               >
-                Nueva contraseña
+                New password
               </label>
-              <input
-                id="newPassword"
-                type="password"
-                value={newPassword}
-                onChange={(event) => {
-                  setNewPassword(event.target.value);
-                  setError(null);
-                }}
-                placeholder="Mínimo 8 caracteres"
-                disabled={isLoading}
-                className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-[color:var(--foreground)] transition-colors placeholder:text-[color:var(--muted-foreground)] focus:border-[color:var(--accent)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-              />
+              <div className="relative">
+                <input
+                  id="newPassword"
+                  type={isNewVisible ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(event) => {
+                    setNewPassword(event.target.value);
+                    setError(null);
+                  }}
+                  placeholder="At least 8 characters"
+                  disabled={isLoading}
+                  className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 pr-12 text-[color:var(--foreground)] transition-colors placeholder:text-[color:var(--muted-foreground)] focus:border-[color:var(--accent)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsNewVisible((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--muted-foreground)] transition hover:text-[color:var(--foreground)]"
+                  aria-label={isNewVisible ? "Hide password" : "Show password"}
+                >
+                  {isNewVisible ? (
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z" />
+                      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+                      <path d="M14.1 9.9a3 3 0 0 0-4.2 4.2" />
+                      <path d="M4 4l16 16" />
+                    </svg>
+                  ) : (
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z" />
+                      <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
 
             <div>
@@ -141,20 +226,62 @@ export default function ChangePasswordFlow() {
                 htmlFor="confirmPassword"
                 className="mb-2 block text-sm font-medium text-[color:var(--foreground)]"
               >
-                Confirmar nueva contraseña
+                Confirm new password
               </label>
-              <input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(event) => {
-                  setConfirmPassword(event.target.value);
-                  setError(null);
-                }}
-                placeholder="Repite tu nueva contraseña"
-                disabled={isLoading}
-                className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 text-[color:var(--foreground)] transition-colors placeholder:text-[color:var(--muted-foreground)] focus:border-[color:var(--accent)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-              />
+              <div className="relative">
+                <input
+                  id="confirmPassword"
+                  type={isConfirmVisible ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(event) => {
+                    setConfirmPassword(event.target.value);
+                    setError(null);
+                  }}
+                  placeholder="Re-enter your new password"
+                  disabled={isLoading}
+                  className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-3 pr-12 text-[color:var(--foreground)] transition-colors placeholder:text-[color:var(--muted-foreground)] focus:border-[color:var(--accent)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsConfirmVisible((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--muted-foreground)] transition hover:text-[color:var(--foreground)]"
+                  aria-label={
+                    isConfirmVisible ? "Hide password" : "Show password"
+                  }
+                >
+                  {isConfirmVisible ? (
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z" />
+                      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+                      <path d="M14.1 9.9a3 3 0 0 0-4.2 4.2" />
+                      <path d="M4 4l16 16" />
+                    </svg>
+                  ) : (
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z" />
+                      <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
 
             {error && (
@@ -168,7 +295,7 @@ export default function ChangePasswordFlow() {
               disabled={isSubmitDisabled}
               className="w-full rounded-lg bg-[color:var(--accent)] px-4 py-3 text-sm font-semibold text-[color:var(--accent-foreground)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isLoading ? "Cambiando..." : "Cambiar contraseña"}
+              {isLoading ? "Updating..." : "Change password"}
             </button>
           </form>
         </section>
@@ -178,7 +305,7 @@ export default function ChangePasswordFlow() {
             href="/settings"
             className="text-[color:var(--accent)] hover:underline"
           >
-            Volver a configuración
+            Back to settings
           </Link>
         </p>
       </div>

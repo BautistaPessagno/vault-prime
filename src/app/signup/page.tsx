@@ -41,6 +41,8 @@ function SignupContent() {
   const searchParams = useSearchParams();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false);
 
   const errorFromUrl = searchParams.get("error");
   const resolvedError =
@@ -144,25 +146,107 @@ function SignupContent() {
               <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
                 Password
               </label>
-              <input
-                name="password"
-                type="password"
-                placeholder="Create a password"
-                autoComplete="new-password"
-                className="w-full rounded-xl border border-[color:var(--border)] bg-transparent px-4 py-3 text-sm outline-none transition focus:border-[color:var(--accent)]"
-              />
+              <div className="relative">
+                <input
+                  name="password"
+                  type={isPasswordVisible ? "text" : "password"}
+                  placeholder="Create a password"
+                  autoComplete="new-password"
+                  className="w-full rounded-xl border border-[color:var(--border)] bg-transparent px-4 py-3 pr-12 text-sm outline-none transition focus:border-[color:var(--accent)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsPasswordVisible((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--muted-foreground)] transition hover:text-[color:var(--foreground)]"
+                  aria-label={isPasswordVisible ? "Hide password" : "Show password"}
+                >
+                  {isPasswordVisible ? (
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z" />
+                      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+                      <path d="M14.1 9.9a3 3 0 0 0-4.2 4.2" />
+                      <path d="M4 4l16 16" />
+                    </svg>
+                  ) : (
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z" />
+                      <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
                 Confirm Password
               </label>
-              <input
-                name="confirmPassword"
-                type="password"
-                placeholder="Repeat your password"
-                autoComplete="new-password"
-                className="w-full rounded-xl border border-[color:var(--border)] bg-transparent px-4 py-3 text-sm outline-none transition focus:border-[color:var(--accent)]"
-              />
+              <div className="relative">
+                <input
+                  name="confirmPassword"
+                  type={isConfirmPasswordVisible ? "text" : "password"}
+                  placeholder="Repeat your password"
+                  autoComplete="new-password"
+                  className="w-full rounded-xl border border-[color:var(--border)] bg-transparent px-4 py-3 pr-12 text-sm outline-none transition focus:border-[color:var(--accent)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsConfirmPasswordVisible((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--muted-foreground)] transition hover:text-[color:var(--foreground)]"
+                  aria-label={
+                    isConfirmPasswordVisible ? "Hide password" : "Show password"
+                  }
+                >
+                  {isConfirmPasswordVisible ? (
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z" />
+                      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+                      <path d="M14.1 9.9a3 3 0 0 0-4.2 4.2" />
+                      <path d="M4 4l16 16" />
+                    </svg>
+                  ) : (
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z" />
+                      <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
             <button
               type="submit"

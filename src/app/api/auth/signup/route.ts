@@ -7,6 +7,9 @@ import {
   deriveKey,
 } from "@/src/lib/auth/encryption";
 import { encryptValue } from "@/src/lib/entries/crypto";
+import { signSessionToken } from "@/src/lib/auth/jwt";
+import { generateSessionId } from "@/src/lib/auth/session";
+import { getKeyCache, CACHE_CONFIG } from "@/src/lib/cache";
 import { db } from "@/src/db";
 import { usersTable } from "@/src/db/schema";
 import { generateAuthCode } from "@/src/lib/auth/verification";
@@ -64,14 +67,35 @@ function withError(request: Request, code: string, status: number) {
   return NextResponse.redirect(url);
 }
 
-function withSuccess(request: Request, email: string, emailSent: boolean) {
+function withSuccess(
+  request: Request,
+  email: string,
+  emailSent: boolean,
+  token: string,
+) {
   if (wantsJson(request)) {
-    return NextResponse.json({ ok: true, emailSent });
+    const response = NextResponse.json({ ok: true, emailSent, token });
+    response.cookies.set("session", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 1000 * 60 * 15, // 15 minutes
+    });
+    return response;
   }
 
   const url = new URL("/verify-email", request.url);
   url.searchParams.set("email", email);
-  return NextResponse.redirect(url);
+  const response = NextResponse.redirect(url);
+  response.cookies.set("session", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 1000 * 60 * 15, // 15 minutes
+  });
+  return response;
 }
 
 export async function POST(req: Request) {
@@ -129,15 +153,25 @@ export async function POST(req: Request) {
     return withError(req, "insert", 500);
   }
 
+  const sessionId = generateSessionId();
+  const keyCache = getKeyCache();
+  await keyCache.set(sessionId, encryptionKey, CACHE_CONFIG.ttlSeconds);
+
+  const token = await signSessionToken({
+    sub: String(createdUserId),
+    email,
+    sid: sessionId,
+  });
+
   const verificationCode = await generateAuthCode(createdUserId);
 
   let emailSent = false;
   if (verificationCode) {
-    const origin = new URL(req.url).origin;
-    const verifyUrl = `${origin}/verify-email`;
+    const verifyUrl = new URL("/verify-email", req.url);
+    verifyUrl.searchParams.set("email", email);
     const sent = await sendVerificationEmail({
       to: email,
-      verifyUrl,
+      verifyUrl: verifyUrl.toString(),
       code: verificationCode,
     });
     emailSent = sent.ok;
@@ -146,5 +180,5 @@ export async function POST(req: Request) {
     }
   }
 
-  return withSuccess(req, email, emailSent);
+  return withSuccess(req, email, emailSent, token);
 }

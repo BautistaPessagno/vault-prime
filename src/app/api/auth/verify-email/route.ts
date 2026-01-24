@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { db } from "@/src/db";
 import { usersTable, emailVerificationCodesTable } from "@/src/db/schema";
 import { eq, sql } from "drizzle-orm";
+import { verifySessionToken } from "@/src/lib/auth/jwt";
 
 type VerifyEmailCodeRow = {
   id: string;
@@ -9,6 +11,22 @@ type VerifyEmailCodeRow = {
   expires_at: Date | null;
   attempts: number;
 };
+
+async function getSuccessRedirect(request: Request) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("session")?.value;
+
+  if (!token) {
+    return new URL("/login", request.url);
+  }
+
+  try {
+    await verifySessionToken(token);
+    return new URL("/", request.url);
+  } catch {
+    return new URL("/login", request.url);
+  }
+}
 
 export async function POST(req: Request) {
   let code: unknown;
@@ -71,5 +89,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "db" }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true }, { status: 200 });
+  const redirectUrl = await getSuccessRedirect(req);
+  return NextResponse.redirect(redirectUrl);
 }

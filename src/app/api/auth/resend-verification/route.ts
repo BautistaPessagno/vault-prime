@@ -49,9 +49,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true }, { status: 200 });
     }
 
-    const origin = new URL(req.url).origin;
-    const verifyUrl = `${origin}/verify-email`;
-    const sent = await sendVerificationEmail({ to: email, verifyUrl, code });
+    const verifyUrl = new URL("/verify-email", req.url);
+    verifyUrl.searchParams.set("email", email);
+    const sent = await sendVerificationEmail({
+      to: email,
+      verifyUrl: verifyUrl.toString(),
+      code,
+    });
     if (!sent.ok) {
       console.error("[Auth Resend Verification] Email error:", sent.error);
     }
