@@ -1,9 +1,11 @@
 # Vault Prime - Development Roadmap
 
 ## Project Overview
+
 Vault Prime is a secure, self-hosted password manager built with Next.js, TypeScript, and PostgreSQL. This roadmap outlines the path to adding advanced features while maintaining security and ease of development.
 
 **Current Tech Stack:**
+
 - Frontend: Next.js 16 + React 19 + TypeScript + Tailwind CSS
 - Backend: Next.js API Routes
 - Database: PostgreSQL + Drizzle ORM
@@ -15,21 +17,25 @@ Vault Prime is a secure, self-hosted password manager built with Next.js, TypeSc
 ## Development Phases
 
 ### 🔵 Phase 1: Core Data Types & Recovery (Weeks 1-3)
+
 **Priority: HIGH** | **Complexity: Medium**
 
 Build foundational features that extend the current vault model and add critical account recovery.
 
 #### 1.1 Secure Notes & Environment Variables
+
 **Effort: 1-2 weeks**
 
 Extend the current `entries` system to support multiple entry types.
 
 **Technical Approach:**
+
 - Add `entry_type` enum field to entries table: `password`, `note`, `env_file`
 - Reuse existing encryption infrastructure (AES-256-GCM)
 - Add UI components for note editor and env file manager
 
 **Database Changes:**
+
 ```sql
 ALTER TABLE entries ADD COLUMN entry_type VARCHAR(20) DEFAULT 'password';
 ALTER TABLE entries ADD COLUMN content TEXT; -- For notes/env data
@@ -37,6 +43,7 @@ ALTER TABLE entries ADD COLUMN metadata JSONB; -- For env file structure
 ```
 
 **Tasks:**
+
 - [ ] Update database schema with entry_type and content fields
 - [ ] Create migration for existing entries (set type to 'password')
 - [ ] Update encryption/decryption to handle larger content fields
@@ -49,6 +56,7 @@ ALTER TABLE entries ADD COLUMN metadata JSONB; -- For env file structure
 - [ ] Add validation for env file format
 
 **Benefits:**
+
 - Minimal changes to existing architecture
 - Reuses proven encryption system
 - Foundation for sharing (Phase 2)
@@ -56,18 +64,21 @@ ALTER TABLE entries ADD COLUMN metadata JSONB; -- For env file structure
 ---
 
 #### 1.2 Password Change & Master Key Rotation
+
 **Effort: 2-3 weeks** | **⚠️ CRITICAL SECURITY FEATURE**
 
 Enable users to change their master password while re-encrypting all vault data.
 
 **Technical Challenge:**
 The current system derives encryption keys from the master password. Changing the password requires:
+
 1. Decrypt all entries with old key
 2. Derive new encryption key from new password
 3. Re-encrypt all entries with new key
 4. Update master password hash
 
 **Implementation Strategy:**
+
 ```typescript
 // Password change flow
 1. User provides current password + new password
@@ -86,23 +97,26 @@ The current system derives encryption keys from the master password. Changing th
 ```
 
 **API Endpoint:**
+
 - `POST /api/auth/change-password`
   - Body: `{ currentPassword, newPassword }`
   - Returns: `{ success, entriesRotated }`
 
 **Tasks:**
-- [ ] Create key rotation utility function
-- [ ] Add batch decryption/re-encryption logic
-- [ ] Implement transactional update (all-or-nothing)
-- [ ] Add progress indicator for large vaults
-- [ ] Create password change UI form
-- [ ] Add session invalidation on password change
+
+- [x] Create key rotation utility function
+- [x] Add batch decryption/re-encryption logic
+- [x] Implement transactional update (all-or-nothing)
+- [x] Add progress indicator for large vaults
+- [x] Create password change UI form
+- [x] Add session invalidation on password change
 - [ ] Add email notification for password changes
 - [ ] Handle errors gracefully (rollback on failure)
 - [ ] Add rate limiting to prevent brute force
 - [ ] Write comprehensive tests for edge cases
 
 **Security Considerations:**
+
 - Use database transactions to prevent partial updates
 - Invalidate all sessions after password change
 - Send email notification about password change
@@ -112,6 +126,7 @@ The current system derives encryption keys from the master password. Changing th
 ---
 
 #### 1.3 Account Recovery Mechanism
+
 **Effort: 1-2 weeks**
 
 Since master passwords cannot be recovered (by design), provide alternatives.
@@ -120,6 +135,7 @@ Since master passwords cannot be recovered (by design), provide alternatives.
 Generate one-time recovery codes during account creation.
 
 **Implementation:**
+
 ```typescript
 // During signup, generate 10 recovery codes
 const codes = generateRecoveryCodes(10); // 16-char alphanumeric
@@ -136,6 +152,7 @@ const hashedCodes = codes.map(code => hash(code));
 ```
 
 **Database Schema:**
+
 ```sql
 CREATE TABLE recovery_codes (
   id UUID PRIMARY KEY,
@@ -147,6 +164,7 @@ CREATE TABLE recovery_codes (
 ```
 
 **Tasks:**
+
 - [ ] Create recovery_codes table
 - [ ] Generate recovery codes on signup
 - [ ] Create download/print UI for recovery codes
@@ -158,17 +176,20 @@ CREATE TABLE recovery_codes (
 - [ ] Update signup flow to show recovery codes
 
 **Option B: Trusted Device (Future Enhancement)**
+
 - Store encrypted backup key on trusted device
 - Requires device fingerprinting + secure storage
 
 ---
 
 ### 🟢 Phase 2: Secure Sharing Infrastructure (Weeks 4-7)
+
 **Priority: HIGH** | **Complexity: High**
 
 Enable secure sharing of passwords, notes, and env files with other users.
 
 #### 2.1 Sharing Architecture Design
+
 **Effort: 1 week**
 
 Design the cryptographic approach for secure sharing.
@@ -176,10 +197,12 @@ Design the cryptographic approach for secure sharing.
 **Recommended Approach: Public Key Cryptography**
 
 Each user gets an RSA key pair:
+
 - **Private key**: Encrypted with user's master password, stored in DB
 - **Public key**: Stored unencrypted in DB
 
 **Sharing Flow:**
+
 ```typescript
 // Alice shares entry with Bob
 1. Alice decrypts entry with her encryption key
@@ -189,12 +212,14 @@ Each user gets an RSA key pair:
 ```
 
 **Alternative: Symmetric Key Sharing**
+
 - Generate random symmetric key for each shared entry
 - Encrypt entry with symmetric key
 - Encrypt symmetric key separately for each recipient using their public key
 - More efficient for group sharing
 
 **Database Schema:**
+
 ```sql
 CREATE TABLE user_keys (
   user_id UUID PRIMARY KEY REFERENCES users(id),
@@ -226,6 +251,7 @@ CREATE TABLE share_invitations (
 ```
 
 **Tasks:**
+
 - [ ] Design complete cryptographic protocol
 - [ ] Choose between RSA and symmetric key approach
 - [ ] Create database schema for sharing
@@ -235,11 +261,13 @@ CREATE TABLE share_invitations (
 ---
 
 #### 2.2 Key Pair Generation & Management
+
 **Effort: 1-2 weeks**
 
 **Library:** Use `@noble/curves` for elliptic curve crypto (smaller keys, faster) or built-in Node.js crypto for RSA.
 
 **Implementation:**
+
 ```typescript
 // During login, generate keys if not exist
 if (!userKeys) {
@@ -248,7 +276,7 @@ if (!userKeys) {
   await db.insert(userKeys).values({
     userId,
     publicKey,
-    encryptedPrivateKey
+    encryptedPrivateKey,
   });
 }
 
@@ -258,6 +286,7 @@ const privateKey = decryptWithMasterKey(encryptedPrivateKey, encryptionKey);
 ```
 
 **Tasks:**
+
 - [ ] Choose crypto library (@noble/curves or Node crypto)
 - [ ] Implement key pair generation
 - [ ] Add key generation to login flow
@@ -270,9 +299,11 @@ const privateKey = decryptWithMasterKey(encryptedPrivateKey, encryptionKey);
 ---
 
 #### 2.3 Share Entry Implementation
+
 **Effort: 2-3 weeks**
 
 **API Endpoints:**
+
 - `POST /api/entries/[id]/share` - Share entry with user(s)
 - `GET /api/shares/incoming` - Get entries shared with me
 - `GET /api/shares/outgoing` - Get entries I've shared
@@ -280,6 +311,7 @@ const privateKey = decryptWithMasterKey(encryptedPrivateKey, encryptionKey);
 - `PUT /api/shares/[id]/permissions` - Update permissions
 
 **Sharing UI Flow:**
+
 1. User clicks "Share" on an entry
 2. Modal opens with recipient email input
 3. Set permissions (view-only, can-edit)
@@ -288,6 +320,7 @@ const privateKey = decryptWithMasterKey(encryptedPrivateKey, encryptionKey);
 6. Recipient accepts → entry appears in "Shared with me" section
 
 **Tasks:**
+
 - [ ] Create share API endpoints
 - [ ] Implement encryption with recipient's public key
 - [ ] Build share modal UI component
@@ -304,11 +337,13 @@ const privateKey = decryptWithMasterKey(encryptedPrivateKey, encryptionKey);
 ---
 
 #### 2.4 Share Secure Notes & Environment Variables
+
 **Effort: 1 week**
 
 Extend sharing to all entry types from Phase 1.1.
 
 **Tasks:**
+
 - [ ] Update share logic to handle all entry types
 - [ ] Add UI indicators for shared notes/env files
 - [ ] Test sharing for large content (notes, env files)
@@ -317,33 +352,39 @@ Extend sharing to all entry types from Phase 1.1.
 ---
 
 ### 🟡 Phase 3: Advanced Authentication - Passkeys (Weeks 8-10)
+
 **Priority: Medium** | **Complexity: Medium-High**
 
 Implement WebAuthn/FIDO2 for passwordless login using biometrics or hardware keys.
 
 #### 3.1 WebAuthn Integration
+
 **Effort: 2-3 weeks**
 
 **Library:** `@simplewebauthn/server` + `@simplewebauthn/browser`
 
 **Key Concept:**
 Passkeys don't replace the master password (needed for encryption), but provide:
+
 - Faster login via biometrics
 - Phishing-resistant authentication
 - Device-based security
 
 **Architecture:**
+
 1. User registers passkey (fingerprint, Face ID, hardware key)
 2. Passkey authenticates user identity
 3. After passkey auth, prompt for master password to decrypt vault
 4. Cache master password-derived key for session
 
 **Alternative Approach:**
+
 - Store encrypted master password locally (encrypted with passkey)
 - Decrypt master password with passkey on login
 - **Caution:** Reduces security if device is compromised
 
 **Database Schema:**
+
 ```sql
 CREATE TABLE passkeys (
   id UUID PRIMARY KEY,
@@ -358,6 +399,7 @@ CREATE TABLE passkeys (
 ```
 
 **Tasks:**
+
 - [ ] Install SimpleWebAuthn libraries
 - [ ] Create passkeys table
 - [ ] Implement registration ceremony (create credential)
@@ -372,6 +414,7 @@ CREATE TABLE passkeys (
 - [ ] Add passkey recovery options
 
 **Security Considerations:**
+
 - Passkeys are device-bound (not portable between devices by default)
 - User needs passkey on each device OR cloud-synced passkeys (platform-dependent)
 - Always require master password for encryption key derivation
@@ -379,20 +422,24 @@ CREATE TABLE passkeys (
 ---
 
 ### 🟠 Phase 4: Browser Extension (Weeks 11-15)
+
 **Priority: Medium** | **Complexity: High**
 
 Build a cross-browser extension for autofill and quick access.
 
 #### 4.1 Extension Architecture
+
 **Effort: 1 week**
 
 **Tech Stack:**
+
 - Manifest V3 (required for Chrome, compatible with Firefox)
 - TypeScript
 - React for popup UI
 - Content scripts for autofill
 
 **Components:**
+
 ```
 /extension
 ├── manifest.json          # Extension config (V3)
@@ -403,6 +450,7 @@ Build a cross-browser extension for autofill and quick access.
 ```
 
 **Communication Flow:**
+
 ```
 Web Page ←→ Content Script ←→ Background Script ←→ API Server
               (Detects forms)    (Manages auth)      (Vault data)
@@ -411,6 +459,7 @@ Web Page ←→ Content Script ←→ Background Script ←→ API Server
 ```
 
 **Tasks:**
+
 - [ ] Set up extension project structure
 - [ ] Configure Manifest V3
 - [ ] Create build pipeline (webpack/vite)
@@ -420,14 +469,17 @@ Web Page ←→ Content Script ←→ Background Script ←→ API Server
 ---
 
 #### 4.2 Authentication & Sync
+
 **Effort: 2-3 weeks**
 
 **Challenges:**
+
 - Extensions can't use httpOnly cookies (security limitation)
 - Need secure token storage
 - Sync vault data to extension
 
 **Approach:**
+
 ```typescript
 // Login flow
 1. User logs in via extension popup
@@ -438,11 +490,13 @@ Web Page ←→ Content Script ←→ Background Script ←→ API Server
 ```
 
 **Security:**
+
 - Encrypt cached vault data with session key
 - Clear cache on logout/timeout
 - Use Content Security Policy (CSP)
 
 **Tasks:**
+
 - [ ] Implement login UI in popup
 - [ ] Store tokens securely in extension storage
 - [ ] Create background sync service
@@ -453,9 +507,11 @@ Web Page ←→ Content Script ←→ Background Script ←→ API Server
 ---
 
 #### 4.3 Autofill Implementation
+
 **Effort: 2-3 weeks**
 
 **Content Script Tasks:**
+
 1. Detect login forms on page load
 2. Show Vault Prime icon in password fields
 3. On click, inject autofill dropdown
@@ -463,6 +519,7 @@ Web Page ←→ Content Script ←→ Background Script ←→ API Server
 5. Optionally auto-submit form
 
 **Tasks:**
+
 - [ ] Create content script for form detection
 - [ ] Build autofill dropdown UI component
 - [ ] Implement field matching (URL-based + fuzzy matching)
@@ -477,14 +534,17 @@ Web Page ←→ Content Script ←→ Background Script ←→ API Server
 ---
 
 #### 4.4 Context Menu & Shortcuts
+
 **Effort: 1 week**
 
 **Features:**
+
 - Right-click → "Save to Vault Prime"
 - Keyboard shortcut to open popup (Ctrl+Shift+V)
 - Quick copy password to clipboard
 
 **Tasks:**
+
 - [ ] Add context menu integration
 - [ ] Implement keyboard shortcuts
 - [ ] Add "Save password" prompt on form submit
@@ -494,15 +554,18 @@ Web Page ←→ Content Script ←→ Background Script ←→ API Server
 ---
 
 #### 4.5 Cross-Browser Publishing
+
 **Effort: 1 week**
 
 **Targets:**
+
 - Chrome Web Store
 - Firefox Add-ons
 - Edge Add-ons (uses Chrome store)
 - Safari (optional, requires conversion)
 
 **Tasks:**
+
 - [ ] Create Chrome Web Store developer account
 - [ ] Prepare extension listing (icons, screenshots, description)
 - [ ] Submit to Chrome Web Store
@@ -514,16 +577,19 @@ Web Page ←→ Content Script ←→ Background Script ←→ API Server
 ---
 
 ### 🔴 Phase 5: iOS Mobile App (Weeks 16-24)
+
 **Priority: Medium** | **Complexity: Very High**
 
 Native iOS app for password management on iPhone/iPad.
 
 #### 5.1 iOS Project Setup
+
 **Effort: 1-2 weeks**
 
 **Tech Stack Options:**
 
 **Option A: React Native (Recommended)**
+
 - **Pros:** Reuse TypeScript logic, faster development, Android support later
 - **Cons:** Limited autofill integration, larger app size
 - **Libraries:**
@@ -532,6 +598,7 @@ Native iOS app for password management on iPhone/iPad.
   - Native module for AutoFill credential provider
 
 **Option B: Native Swift + SwiftUI**
+
 - **Pros:** Best iOS integration, autofill support, smaller app
 - **Cons:** Separate codebase, slower development
 - **Frameworks:**
@@ -542,6 +609,7 @@ Native iOS app for password management on iPhone/iPad.
 **Recommended:** Start with React Native for faster MVP, then evaluate native rewrite.
 
 **Tasks:**
+
 - [ ] Choose tech stack (React Native vs Native)
 - [ ] Set up Xcode project
 - [ ] Configure iOS app bundle ID
@@ -553,9 +621,11 @@ Native iOS app for password management on iPhone/iPad.
 ---
 
 #### 5.2 Core App Features
+
 **Effort: 3-4 weeks**
 
 **Features:**
+
 - Login with master password
 - Biometric unlock (Face ID / Touch ID)
 - Browse vault entries (passwords, notes, env files)
@@ -565,6 +635,7 @@ Native iOS app for password management on iPhone/iPad.
 - Offline mode with sync
 
 **Tasks:**
+
 - [ ] Build login screen with biometric option
 - [ ] Create vault list view
 - [ ] Build entry detail view
@@ -579,12 +650,14 @@ Native iOS app for password management on iPhone/iPad.
 ---
 
 #### 5.3 iOS AutoFill Integration
+
 **Effort: 2-3 weeks** | **⚠️ Complex**
 
 **Apple's AutoFill Credential Provider:**
 Requires creating an App Extension that integrates with iOS system autofill.
 
 **Implementation:**
+
 ```swift
 // Create AutoFill Extension target
 1. Add AutoFill Credential Provider Extension to Xcode project
@@ -595,12 +668,14 @@ Requires creating an App Extension that integrates with iOS system autofill.
 ```
 
 **Architecture:**
+
 ```
 Main App ←→ Shared Container ←→ AutoFill Extension
 (Vault UI)   (Encrypted DB)     (System integration)
 ```
 
 **Tasks:**
+
 - [ ] Create AutoFill extension target
 - [ ] Implement credential provider protocol
 - [ ] Set up app group for shared data
@@ -612,6 +687,7 @@ Main App ←→ Shared Container ←→ AutoFill Extension
 - [ ] Add support for passkeys (iOS 17+)
 
 **Challenges:**
+
 - Extension has separate process and memory limits
 - Must handle authentication within extension
 - Limited UI customization
@@ -620,9 +696,11 @@ Main App ←→ Shared Container ←→ AutoFill Extension
 ---
 
 #### 5.4 iOS-Specific Features
+
 **Effort: 1-2 weeks**
 
 **Features:**
+
 - Share extension (save passwords from Safari)
 - Widgets (quick access to favorite entries)
 - Shortcuts integration (Siri shortcuts)
@@ -630,6 +708,7 @@ Main App ←→ Shared Container ←→ AutoFill Extension
 - Apple Watch companion app (future)
 
 **Tasks:**
+
 - [ ] Add Share extension for saving passwords
 - [ ] Create home screen widget
 - [ ] Implement Siri shortcuts
@@ -642,15 +721,18 @@ Main App ←→ Shared Container ←→ AutoFill Extension
 ---
 
 #### 5.5 App Store Submission
+
 **Effort: 1-2 weeks**
 
 **Requirements:**
+
 - App Store listing (icons, screenshots, description)
 - Privacy policy (required for password managers)
 - Cryptography export compliance
 - App review guidelines compliance
 
 **Tasks:**
+
 - [ ] Create app icons (all sizes)
 - [ ] Capture screenshots for all device sizes
 - [ ] Write app description and keywords
@@ -664,9 +746,11 @@ Main App ←→ Shared Container ←→ AutoFill Extension
 ---
 
 ## Alternative: Android After iOS
+
 **Effort: 4-6 weeks** (if React Native) or 8-12 weeks (if native)
 
 If React Native is used, Android support requires:
+
 - [ ] Android Studio setup
 - [ ] Autofill service implementation (different from iOS)
 - [ ] Google Play Console setup
@@ -678,28 +762,33 @@ If React Native is used, Android support requires:
 ## Development Principles
 
 ### 1. **Iterative Development**
+
 - Each phase delivers usable features
 - Test thoroughly before moving to next phase
 - Gather user feedback between phases
 
 ### 2. **Security First**
+
 - All new features must maintain end-to-end encryption
 - No plaintext storage of sensitive data
 - Regular security audits
 - Minimal trust in server
 
 ### 3. **Backward Compatibility**
+
 - Database migrations must not break existing data
 - API changes should be versioned
 - Support legacy clients during transitions
 
 ### 4. **Testing Strategy**
+
 - Unit tests for crypto functions
 - Integration tests for API endpoints
 - E2E tests for critical flows (login, share, autofill)
 - Security testing (penetration tests, code review)
 
 ### 5. **Code Reusability**
+
 - Share crypto logic across platforms
 - Use TypeScript for type safety everywhere
 - Create shared UI component library
@@ -709,13 +798,13 @@ If React Native is used, Android support requires:
 
 ## Technology Additions by Phase
 
-| Phase | New Technologies |
-|-------|------------------|
-| 1 | None (uses existing stack) |
-| 2 | `@noble/curves` or Node crypto (RSA/ECC) |
-| 3 | `@simplewebauthn/server`, `@simplewebauthn/browser` |
-| 4 | Manifest V3, webpack/vite for extension build |
-| 5 | React Native OR Swift/SwiftUI, iOS SDKs |
+| Phase | New Technologies                                    |
+| ----- | --------------------------------------------------- |
+| 1     | None (uses existing stack)                          |
+| 2     | `@noble/curves` or Node crypto (RSA/ECC)            |
+| 3     | `@simplewebauthn/server`, `@simplewebauthn/browser` |
+| 4     | Manifest V3, webpack/vite for extension build       |
+| 5     | React Native OR Swift/SwiftUI, iOS SDKs             |
 
 ---
 
@@ -768,6 +857,7 @@ If React Native is used, Android support requires:
 **Total:** ~24 weeks (6 months) for full roadmap completion with one developer
 
 **With a small team (2-3 developers):**
+
 - **Parallel development:** ~16 weeks (4 months)
 - Phases 1-2 can run in parallel
 - Phase 4 & 5 can run in parallel after Phase 2 completes
@@ -788,18 +878,24 @@ If React Native is used, Android support requires:
 ## Appendix: Alternative Approaches
 
 ### Sharing Without Public Key Crypto
+
 If public key crypto is too complex initially:
+
 - **Link-based sharing:** Generate encrypted share links with passwords
 - **Simpler but less secure:** Recipient needs both link + password
 - **Use case:** Quick sharing, one-time shares
 
 ### Mobile-First Alternative
+
 If iOS is higher priority than extensions:
+
 - **Swap Phase 4 ↔ Phase 5**
 - Considerations: Mobile users may expect browser extension exists first
 
 ### All-in-One Phase
+
 For rapid prototyping:
+
 - Combine Phase 1.1 + 1.2 into single "Enhanced Vault" phase
 - Deploy quickly, iterate based on usage data
 
