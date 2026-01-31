@@ -20,6 +20,8 @@ export async function masterPasswordHash(masterKey: string) {
   return argon2.hash(masterKey, {
     type: argon2.argon2id,
     memoryCost: 65536,
+    timeCost: 3,
+    parallelism: 4,
   });
 }
 
@@ -34,7 +36,7 @@ export async function verify(password: string, hashedPassword: string) {
 export async function deriveKey(payload: string, salt: string) {
   const enc = new TextEncoder();
   const k = pbkdf2(sha256, enc.encode(payload), enc.encode(salt), {
-    c: 32,
+    c: 600_000,
     dkLen: 32,
   });
   return bytesToHex(k);
