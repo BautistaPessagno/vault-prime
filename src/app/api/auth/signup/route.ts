@@ -14,22 +14,14 @@ import { db } from "@/src/db";
 import { usersTable } from "@/src/db/schema";
 import { generateAuthCode } from "@/src/lib/auth/verification";
 import { sendVerificationEmail } from "@/src/lib/email/send-verification-email";
-
-type Credentials = {
-  email: string;
-  password: string;
-  passwordConfirmation: string;
-};
-
-function normalizeEmail(value: FormDataEntryValue | string | null) {
-  return String(value ?? "")
-    .trim()
-    .toLowerCase();
-}
-
-function normalizePassword(value: FormDataEntryValue | string | null) {
-  return String(value ?? "");
-}
+import { z } from "zod";
+import { signupSchema } from "@/src/lib/validation/schemas";
+import { validatePassword } from "@/src/lib/security/password-validation";
+import {
+  logAuditEvent,
+  getClientIp,
+  getUserAgent,
+} from "@/src/lib/security/audit-log";
 
 function wantsJson(request: Request) {
   const accept = request.headers.get("accept") ?? "";
@@ -37,29 +29,29 @@ function wantsJson(request: Request) {
   return accept.includes("application/json") || contentType.includes("json");
 }
 
-async function readCredentials(request: Request): Promise<Credentials> {
+async function readBody(request: Request): Promise<unknown> {
   const contentType = request.headers.get("content-type") ?? "";
 
   if (contentType.includes("application/json")) {
-    const body = await request.json();
-    return {
-      email: normalizeEmail(body?.email),
-      password: normalizePassword(body?.password),
-      passwordConfirmation: normalizePassword(body?.passwordConfirmation),
-    };
+    return await request.json();
   }
 
   const formData = await request.formData();
   return {
-    email: normalizeEmail(formData.get("email")),
-    password: normalizePassword(formData.get("password")),
-    passwordConfirmation: normalizePassword(formData.get("passwordConfirmation")),
+    email: formData.get("email"),
+    password: formData.get("password"),
+    passwordConfirmation: formData.get("passwordConfirmation"),
   };
 }
 
-function withError(request: Request, code: string, status: number) {
+function withError(
+  request: Request,
+  code: string,
+  status: number,
+  details?: { errors?: string[]; feedback?: { warning: string; suggestions: string[] } }
+) {
   if (wantsJson(request)) {
-    return NextResponse.json({ error: code }, { status });
+    return NextResponse.json({ error: code, ...details }, { status });
   }
 
   const url = new URL("/signup", request.url);
@@ -71,7 +63,7 @@ function withSuccess(
   request: Request,
   email: string,
   emailSent: boolean,
-  token: string,
+  token: string
 ) {
   if (wantsJson(request)) {
     const response = NextResponse.json({ ok: true, emailSent, token });
@@ -99,13 +91,43 @@ function withSuccess(
 }
 
 export async function POST(req: Request) {
-  const { email, password, passwordConfirmation } = await readCredentials(req);
-  if (!email || !password || !passwordConfirmation) {
-    return withError(req, "missing", 400);
+  const ipAddress = getClientIp(req);
+  const userAgent = getUserAgent(req);
+
+  // Parse and validate input with Zod
+  const body = await readBody(req);
+  const parseResult = signupSchema.safeParse(body);
+
+  if (!parseResult.success) {
+    const flat = z.flattenError(parseResult.error);
+    const errors = [
+      ...flat.formErrors,
+      ...Object.values(flat.fieldErrors).flat(),
+    ];
+    await logAuditEvent({
+      eventType: "signup_failed",
+      ipAddress,
+      userAgent,
+      metadata: { reason: "validation_failed", errors },
+    });
+    return withError(req, "validation", 400, { errors });
   }
 
-  if (password !== passwordConfirmation) {
-    return withError(req, "password_mismatch", 400);
+  const { email, password } = parseResult.data;
+
+  // Validate password strength
+  const passwordValidation = validatePassword(password, [email]);
+  if (!passwordValidation.valid) {
+    await logAuditEvent({
+      eventType: "signup_failed",
+      ipAddress,
+      userAgent,
+      metadata: { reason: "weak_password", email },
+    });
+    return withError(req, "weak_password", 400, {
+      errors: passwordValidation.errors,
+      feedback: passwordValidation.feedback,
+    });
   }
 
   let existingId: string | undefined;
@@ -122,6 +144,12 @@ export async function POST(req: Request) {
   }
 
   if (existingId) {
+    await logAuditEvent({
+      eventType: "signup_failed",
+      ipAddress,
+      userAgent,
+      metadata: { reason: "email_exists", email },
+    });
     return withError(req, "exists", 409);
   }
 
@@ -179,6 +207,14 @@ export async function POST(req: Request) {
       console.error("[Auth Signup] Verification email error:", sent.error);
     }
   }
+
+  await logAuditEvent({
+    userId: createdUserId,
+    eventType: "signup",
+    ipAddress,
+    userAgent,
+    metadata: { email, emailSent },
+  });
 
   return withSuccess(req, email, emailSent, token);
 }

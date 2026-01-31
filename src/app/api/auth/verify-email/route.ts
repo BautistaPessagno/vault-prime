@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { db } from "@/src/db";
-import { usersTable, emailVerificationCodesTable } from "@/src/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { usersTable } from "@/src/db/schema";
+import { eq } from "drizzle-orm";
 import { verifySessionToken } from "@/src/lib/auth/jwt";
-
-type VerifyEmailCodeRow = {
-  id: string;
-  user_id: string;
-  expires_at: Date | null;
-  attempts: number;
-};
+import { verifyCode } from "@/src/lib/auth/verification";
+import { verifyEmailSchema } from "@/src/lib/validation/schemas";
+import {
+  logAuditEvent,
+  getClientIp,
+  getUserAgent,
+} from "@/src/lib/security/audit-log";
 
 async function getSuccessRedirect(request: Request) {
   const cookieStore = await cookies();
@@ -28,66 +28,96 @@ async function getSuccessRedirect(request: Request) {
   }
 }
 
-export async function POST(req: Request) {
-  let code: unknown;
-  try {
-    const body = await req.json();
-    code = body?.code;
-  } catch {
-    code = undefined;
+async function getUserIdFromSession(): Promise<string | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("session")?.value;
+
+  if (!token) {
+    return null;
   }
 
-  if (typeof code !== "string" || code.trim() === "") {
+  try {
+    const payload = await verifySessionToken(token);
+    return payload.sub ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function POST(req: Request) {
+  const ipAddress = getClientIp(req);
+  const userAgent = getUserAgent(req);
+
+  // Parse and validate input
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "invalid_json" }, { status: 400 });
+  }
+
+  const parseResult = verifyEmailSchema.safeParse(body);
+  if (!parseResult.success) {
     return NextResponse.json({ error: "missing code" }, { status: 400 });
   }
 
-  let verificationCodeRow: VerifyEmailCodeRow | undefined;
-  try {
-    const codeRow = await db
-      .select({
-        id: emailVerificationCodesTable.id,
-        user_id: emailVerificationCodesTable.user_id,
-        expires_at: emailVerificationCodesTable.expires_at,
-        attempts: emailVerificationCodesTable.attempts,
-      })
-      .from(emailVerificationCodesTable)
-      .where(eq(emailVerificationCodesTable.code, code))
-      .limit(1);
-    verificationCodeRow = codeRow[0];
-  } catch (error) {
-    console.error("[Auth Verify Email] Database error:", error);
-    return NextResponse.json({ error: "db" }, { status: 500 });
+  const { code } = parseResult.data;
+
+  // Get user ID from session
+  const userId = await getUserIdFromSession();
+  if (!userId) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  if (!verificationCodeRow) {
+
+  // Verify the code using the secure verification function
+  const result = await verifyCode(userId, code);
+
+  if (!result.valid) {
+    if (result.error === "max_attempts") {
+      await logAuditEvent({
+        userId,
+        eventType: "email_verification_max_attempts",
+        ipAddress,
+        userAgent,
+      });
+      return NextResponse.json(
+        { error: "max_attempts" },
+        { status: 429 }
+      );
+    }
+
+    await logAuditEvent({
+      userId,
+      eventType: "email_verification_failed",
+      ipAddress,
+      userAgent,
+      metadata: { reason: result.error },
+    });
+
+    if (result.error === "expired") {
+      return NextResponse.json({ error: "expired" }, { status: 400 });
+    }
+
     return NextResponse.json({ error: "invalid code" }, { status: 400 });
   }
 
-  if (verificationCodeRow.expires_at) {
-    if (verificationCodeRow.expires_at.getTime() < Date.now()) {
-      return NextResponse.json({ error: "expired" }, { status: 400 });
-    }
-  }
-
-  try {
-    await db
-      .update(emailVerificationCodesTable)
-      .set({ attempts: sql`${emailVerificationCodesTable.attempts} + 1` })
-      .where(eq(emailVerificationCodesTable.id, verificationCodeRow.id));
-  } catch (error) {
-    console.error("[Auth Verify Email] Attempts update error:", error);
-    return NextResponse.json({ error: "db" }, { status: 500 });
-  }
-
-  // Update user record with verified_at timestamp.
+  // Update user record with verified_at timestamp
   try {
     await db
       .update(usersTable)
       .set({ verified_at: new Date() })
-      .where(eq(usersTable.id, verificationCodeRow.user_id));
+      .where(eq(usersTable.id, userId));
   } catch (error) {
     console.error("[Auth Verify Email] Update error:", error);
     return NextResponse.json({ error: "db" }, { status: 500 });
   }
+
+  await logAuditEvent({
+    userId,
+    eventType: "email_verified",
+    ipAddress,
+    userAgent,
+  });
 
   const redirectUrl = await getSuccessRedirect(req);
   return NextResponse.redirect(redirectUrl);
