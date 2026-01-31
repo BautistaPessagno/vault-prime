@@ -1,6 +1,9 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import type { ZXCVBNResult } from "zxcvbn";
 import type { EntryDraft } from "@/src/types/entries";
+import PasswordStrengthMeter from "@/src/components/password-strength-meter";
 
 type EntryEditorFormProps = {
   draft: EntryDraft;
@@ -19,6 +22,27 @@ export default function EntryEditorForm({
   onCancel,
   onSubmit,
 }: EntryEditorFormProps) {
+  const [passwordStrength, setPasswordStrength] = useState<ZXCVBNResult | null>(
+    null
+  );
+
+  // Check password strength as user types
+  useEffect(() => {
+    if (!draft.password) {
+      setPasswordStrength(null);
+      return;
+    }
+
+    // Dynamic import to avoid SSR issues
+    import("zxcvbn").then((zxcvbn) => {
+      const userInputs = [draft.name, draft.username, draft.url].filter(
+        Boolean
+      );
+      const result = zxcvbn.default(draft.password, userInputs);
+      setPasswordStrength(result);
+    });
+  }, [draft.password, draft.name, draft.username, draft.url]);
+
   return (
     <div>
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -76,7 +100,7 @@ export default function EntryEditorForm({
               placeholder="user@email.com"
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 md:col-span-2">
             <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
               Password
             </label>
@@ -97,6 +121,13 @@ export default function EntryEditorForm({
                 Generate
               </button>
             </div>
+            {draft.password && passwordStrength && (
+              <PasswordStrengthMeter
+                strength={passwordStrength}
+                password={draft.password}
+                showRequirements={false}
+              />
+            )}
           </div>
         </div>
         <div className="flex flex-wrap justify-end gap-3">
