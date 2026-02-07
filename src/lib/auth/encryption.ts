@@ -2,7 +2,6 @@
 import * as argon2 from "argon2";
 import { randomBytes, bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import { gcm } from "@noble/ciphers/aes.js";
-import { hkdf } from "@noble/hashes/hkdf.js";
 import { pbkdf2 } from "@noble/hashes/pbkdf2.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 
