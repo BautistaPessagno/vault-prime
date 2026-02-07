@@ -8,11 +8,18 @@ import { migrateLegacyUser } from "@/src/lib/auth/migration";
 import { getKeyCache, CACHE_CONFIG } from "@/src/lib/cache";
 import { db } from "@/src/db";
 import { usersTable } from "@/src/db/schema";
-
-type Credentials = {
-  email: string;
-  password: string;
-};
+import { loginSchema } from "@/src/lib/validation/schemas";
+import { checkRateLimit, resetRateLimit } from "@/src/lib/security/rate-limit";
+import {
+  checkLockout,
+  recordFailedLogin,
+  clearFailedLogins,
+} from "@/src/lib/security/lockout";
+import {
+  logAuditEvent,
+  getClientIp,
+  getUserAgent,
+} from "@/src/lib/security/audit-log";
 
 type LoginUserRow = {
   id: string;
@@ -21,15 +28,17 @@ type LoginUserRow = {
   encryption_key: string | null;
 };
 
-function normalizeEmail(value: FormDataEntryValue | string | null) {
-  return String(value ?? "")
-    .trim()
-    .toLowerCase();
-}
+const IP_RATE_LIMIT = {
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  maxAttempts: 10,
+  keyPrefix: "ratelimit:login:ip:",
+};
 
-function normalizePassword(value: FormDataEntryValue | string | null) {
-  return String(value ?? "");
-}
+const EMAIL_RATE_LIMIT = {
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  maxAttempts: 5,
+  keyPrefix: "ratelimit:login:email:",
+};
 
 function wantsJson(request: Request) {
   const accept = request.headers.get("accept") ?? "";
@@ -37,27 +46,28 @@ function wantsJson(request: Request) {
   return accept.includes("application/json") || contentType.includes("json");
 }
 
-async function readCredentials(request: Request): Promise<Credentials> {
+async function readBody(request: Request): Promise<unknown> {
   const contentType = request.headers.get("content-type") ?? "";
 
   if (contentType.includes("application/json")) {
-    const body = await request.json();
-    return {
-      email: normalizeEmail(body?.email),
-      password: normalizePassword(body?.password),
-    };
+    return await request.json();
   }
 
   const formData = await request.formData();
   return {
-    email: normalizeEmail(formData.get("email")),
-    password: normalizePassword(formData.get("password")),
+    email: formData.get("email"),
+    password: formData.get("password"),
   };
 }
 
-function withError(request: Request, code: string, status: number) {
+function withError(
+  request: Request,
+  code: string,
+  status: number,
+  headers?: Record<string, string>
+) {
   if (wantsJson(request)) {
-    return NextResponse.json({ error: code }, { status });
+    return NextResponse.json({ error: code }, { status, headers });
   }
 
   const url = new URL("/login", request.url);
@@ -82,10 +92,51 @@ function withSuccess(request: Request, token: string) {
 }
 
 export async function POST(req: Request) {
-  const { email, password } = await readCredentials(req);
-  if (!email || !password) {
+  const ipAddress = getClientIp(req);
+  const userAgent = getUserAgent(req);
+
+  // Check IP rate limit first
+  if (ipAddress) {
+    const ipRateLimit = await checkRateLimit(ipAddress, IP_RATE_LIMIT);
+    if (!ipRateLimit.allowed) {
+      await logAuditEvent({
+        eventType: "login_failed",
+        ipAddress,
+        userAgent,
+        metadata: { reason: "ip_rate_limited" },
+      });
+      const retryAfter = Math.ceil((ipRateLimit.resetAt - Date.now()) / 1000);
+      return withError(req, "rate_limited", 429, {
+        "Retry-After": String(retryAfter),
+      });
+    }
+  }
+
+  // Parse and validate input
+  const body = await readBody(req);
+  const parseResult = loginSchema.safeParse(body);
+
+  if (!parseResult.success) {
     return withError(req, "missing", 400);
   }
+
+  const { email, password } = parseResult.data;
+
+  // Check email rate limit
+  const emailRateLimit = await checkRateLimit(email, EMAIL_RATE_LIMIT);
+  if (!emailRateLimit.allowed) {
+    await logAuditEvent({
+      eventType: "login_failed",
+      ipAddress,
+      userAgent,
+      metadata: { reason: "email_rate_limited", email },
+    });
+    const retryAfter = Math.ceil((emailRateLimit.resetAt - Date.now()) / 1000);
+    return withError(req, "rate_limited", 429, {
+      "Retry-After": String(retryAfter),
+    });
+  }
+
   let user: LoginUserRow | undefined;
   try {
     const rows = await db
@@ -105,21 +156,79 @@ export async function POST(req: Request) {
   }
 
   if (!user?.master_password_hash) {
+    await logAuditEvent({
+      eventType: "login_failed",
+      ipAddress,
+      userAgent,
+      metadata: { reason: "user_not_found", email },
+    });
     return withError(req, "invalid", 401);
+  }
+
+  // Check account lockout
+  const lockoutStatus = await checkLockout(user.id);
+  if (lockoutStatus.locked) {
+    await logAuditEvent({
+      userId: user.id,
+      eventType: "login_locked",
+      ipAddress,
+      userAgent,
+      metadata: {
+        email,
+        lockedUntil: lockoutStatus.lockedUntil?.toISOString(),
+      },
+    });
+    return withError(req, "locked", 423);
   }
 
   const salt = Buffer.from(email);
   const masterKey = await hash(password, salt);
   const ok = await verify(masterKey, user.master_password_hash);
+
   if (!ok) {
+    // Record failed login attempt
+    const newLockoutStatus = await recordFailedLogin(user.id);
+
+    await logAuditEvent({
+      userId: user.id,
+      eventType: newLockoutStatus.locked ? "login_locked" : "login_failed",
+      ipAddress,
+      userAgent,
+      metadata: {
+        email,
+        failedAttempts: newLockoutStatus.failedAttempts,
+        locked: newLockoutStatus.locked,
+      },
+    });
+
+    if (newLockoutStatus.locked) {
+      return withError(req, "locked", 423);
+    }
+
     return withError(req, "invalid", 401);
   }
 
   if (!user.verified_at) {
+    await logAuditEvent({
+      userId: user.id,
+      eventType: "login_failed",
+      ipAddress,
+      userAgent,
+      metadata: { reason: "unverified", email },
+    });
     return withError(req, "unverified", 403);
   }
 
-  // Derive streched master key
+  // Clear failed login attempts on successful login
+  await clearFailedLogins(user.id);
+
+  // Reset rate limits on successful login
+  if (ipAddress) {
+    await resetRateLimit(ipAddress, IP_RATE_LIMIT.keyPrefix);
+  }
+  await resetRateLimit(email, EMAIL_RATE_LIMIT.keyPrefix);
+
+  // Derive stretched master key
   const strechedMasterKey = await deriveKey(masterKey, password);
   let encryptionKey: string;
 
@@ -141,5 +250,14 @@ export async function POST(req: Request) {
     email,
     sid: sessionId,
   });
+
+  await logAuditEvent({
+    userId: user.id,
+    eventType: "login_success",
+    ipAddress,
+    userAgent,
+    metadata: { email },
+  });
+
   return withSuccess(req, token);
 }

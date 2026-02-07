@@ -368,14 +368,18 @@ export default function Home() {
                 draft={draft}
                 isCreating={isCreating}
                 onDraftChange={setDraft}
-                onGeneratePassword={() =>
+                onGeneratePassword={() => {
+                  // Generate cryptographically secure password
+                  const array = new Uint8Array(24);
+                  crypto.getRandomValues(array);
+                  const password = Array.from(array, (byte) =>
+                    byte.toString(36).padStart(2, '0')
+                  ).join('').slice(0, 20);
                   setDraft({
                     ...draft,
-                    password:
-                      Math.random().toString(36).slice(-10) +
-                      Math.random().toString(36).slice(-10),
-                  })
-                }
+                    password,
+                  });
+                }}
                 onCancel={handleCancel}
                 onSubmit={handleSave}
               />

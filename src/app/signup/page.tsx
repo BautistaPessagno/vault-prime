@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState, type FormEvent } from "react";
+import { Suspense, useState, useEffect, type FormEvent } from "react";
+import type { ZXCVBNResult } from "zxcvbn";
+import PasswordStrengthMeter from "@/src/components/password-strength-meter";
 
 const signupMessages: Record<string, string> = {
   missing: "Enter an email and password to create your account.",
@@ -11,6 +13,8 @@ const signupMessages: Record<string, string> = {
   db: "We could not reach the database. Try again soon.",
   insert: "We could not create your account. Try again.",
   unexpected: "Something went wrong. Please try again.",
+  validation: "Please check the form for errors.",
+  weak_password: "Password is not strong enough.",
 };
 
 export default function SignupPage() {
@@ -40,29 +44,48 @@ function SignupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false);
+  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
+  const [passwordStrength, setPasswordStrength] = useState<ZXCVBNResult | null>(null);
 
   const errorFromUrl = searchParams.get("error");
   const resolvedError =
     errorMessage ?? (errorFromUrl ? signupMessages[errorFromUrl] : null);
 
+  // Check password strength as user types
+  useEffect(() => {
+    if (!password) {
+      setPasswordStrength(null);
+      return;
+    }
+
+    // Dynamic import to avoid SSR issues
+    import("zxcvbn").then((zxcvbn) => {
+      const result = zxcvbn.default(password, [email]);
+      setPasswordStrength(result);
+    });
+  }, [password, email]);
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage(null);
+    setValidationErrors([]);
 
     const formData = new FormData(event.currentTarget);
-    const email = String(formData.get("email") ?? "");
-    const password = String(formData.get("password") ?? "");
+    const emailValue = String(formData.get("email") ?? "");
+    const passwordValue = String(formData.get("password") ?? "");
     const confirmPassword = String(formData.get("confirmPassword") ?? "");
 
-    if (!email || !password || !confirmPassword) {
+    if (!emailValue || !passwordValue || !confirmPassword) {
       setErrorMessage(signupMessages.missing);
       return;
     }
 
-    if (password !== confirmPassword) {
+    if (passwordValue !== confirmPassword) {
       setErrorMessage(signupMessages.password_mismatch);
       return;
     }
@@ -78,25 +101,35 @@ function SignupContent() {
         },
         credentials: "include",
         body: JSON.stringify({
-          email,
-          password,
+          email: emailValue,
+          password: passwordValue,
           passwordConfirmation: confirmPassword,
         }),
       });
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
+        errors?: string[];
+        feedback?: { warning: string; suggestions: string[] };
         emailSent?: boolean;
       };
 
       if (!response.ok) {
-        setErrorMessage(
-          signupMessages[payload.error ?? "unexpected"] ??
-            signupMessages.unexpected,
-        );
+        if (payload.errors && payload.errors.length > 0) {
+          setValidationErrors(payload.errors);
+          setErrorMessage(
+            signupMessages[payload.error ?? "unexpected"] ??
+              signupMessages.unexpected,
+          );
+        } else {
+          setErrorMessage(
+            signupMessages[payload.error ?? "unexpected"] ??
+              signupMessages.unexpected,
+          );
+        }
         return;
       }
 
-      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      router.push(`/verify-email?email=${encodeURIComponent(emailValue)}`);
     } catch {
       setErrorMessage(signupMessages.unexpected);
     } finally {
@@ -121,6 +154,13 @@ function SignupContent() {
           {resolvedError && (
             <div className="mb-6 rounded-xl border border-[color:var(--danger)] px-4 py-3 text-sm text-[color:var(--danger)]">
               {resolvedError}
+              {validationErrors.length > 0 && (
+                <ul className="mt-2 list-inside list-disc space-y-1">
+                  {validationErrors.map((err, idx) => (
+                    <li key={idx}>{err}</li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
           <div className="mb-6 space-y-2">
@@ -139,6 +179,8 @@ function SignupContent() {
                 type="email"
                 placeholder="alex@vaultprime.com"
                 autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full rounded-xl border border-[color:var(--border)] bg-transparent px-4 py-3 text-sm outline-none transition focus:border-[color:var(--accent)]"
               />
             </div>
@@ -152,6 +194,8 @@ function SignupContent() {
                   type={isPasswordVisible ? "text" : "password"}
                   placeholder="Create a password"
                   autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="w-full rounded-xl border border-[color:var(--border)] bg-transparent px-4 py-3 pr-12 text-sm outline-none transition focus:border-[color:var(--accent)]"
                 />
                 <button
@@ -193,6 +237,12 @@ function SignupContent() {
                   )}
                 </button>
               </div>
+              {password && passwordStrength && (
+                <PasswordStrengthMeter
+                  strength={passwordStrength}
+                  password={password}
+                />
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
@@ -270,3 +320,4 @@ function SignupContent() {
     </main>
   );
 }
+

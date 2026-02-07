@@ -29,13 +29,16 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-email-validator": "^1.0.2",
-    "resend": "^6.7.0"
+    "resend": "^6.7.0",
+    "zod": "^4.3.6",
+    "zxcvbn": "^4.4.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/zxcvbn": "^4.4.5",
     "drizzle-kit": "^0.31.8",
     "eslint": "^9",
     "eslint-config-next": "16.1.0",
