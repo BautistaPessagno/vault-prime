@@ -4,7 +4,6 @@ import { hash, verify, deriveKey } from "@/src/lib/auth/encryption";
 import { decryptValue } from "@/src/lib/entries/crypto";
 import { signSessionToken } from "@/src/lib/auth/jwt";
 import { generateSessionId } from "@/src/lib/auth/session";
-import { migrateLegacyUser } from "@/src/lib/auth/migration";
 import { getKeyCache, CACHE_CONFIG } from "@/src/lib/cache";
 import { db } from "@/src/db";
 import { usersTable } from "@/src/db/schema";
@@ -234,15 +233,7 @@ export async function POST(req: Request) {
 
   // Derive stretched master key
   const strechedMasterKey = await deriveKey(masterKey, password);
-  let encryptionKey: string;
-
-  if (!user.encryption_key) {
-    // Legacy user without encryption_key - migrate to new model
-    encryptionKey = await migrateLegacyUser(user.id, strechedMasterKey);
-  } else {
-    // User with encryption_key - decrypt it
-    encryptionKey = await decryptValue(user.encryption_key, strechedMasterKey);
-  }
+  const encryptionKey = await decryptValue(user.encryption_key, strechedMasterKey);
 
   // Store encryption key in cache
   const sessionId = generateSessionId();
