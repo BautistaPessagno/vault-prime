@@ -4,6 +4,14 @@ import { db } from "@/src/db";
 import { entriesTable } from "@/src/db/schema";
 import { getSessionData } from "@/src/lib/entries/crypto";
 import { getUserVerificationStatus } from "@/src/lib/auth/verify-user";
+import { logAuditEvent, getClientIp, getUserAgent } from "@/src/lib/security/audit-log";
+import { checkRateLimit } from "@/src/lib/security/rate-limit";
+
+const ENTRY_WRITE_RATE_LIMIT = {
+  windowMs: 60 * 1000, // 1 minute
+  maxAttempts: 30,
+  keyPrefix: "ratelimit:entries:write:",
+};
 
 type RouteContext = {
   params: Promise<{
@@ -42,6 +50,12 @@ export async function POST(req: Request, context: RouteContext) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
+  // Rate limit entry writes per user
+  const rateLimit = await checkRateLimit(userId, ENTRY_WRITE_RATE_LIMIT);
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
+
   const body = await req.json().catch(() => null);
   const lastCopied =
     typeof body?.last_copied === "string"
@@ -66,9 +80,18 @@ export async function POST(req: Request, context: RouteContext) {
     if (!entry) {
       return NextResponse.json({ error: "not_found" }, { status: 404 });
     }
+
+    await logAuditEvent({
+      userId,
+      eventType: "entry_copied",
+      ipAddress: getClientIp(req),
+      userAgent: getUserAgent(req),
+      metadata: { entryId },
+    });
+
     return NextResponse.json({ entry });
   } catch (error) {
-    console.error("[Entries Copied] Database error:", error);
+    console.error("[Entries Copied] Database error:", error instanceof Error ? error.message : "unknown");
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 }

@@ -41,7 +41,7 @@ export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
 export const entrySchema = z.object({
   name: z.string().min(1, "Name is required").max(255, "Name is too long"),
   username: z.string().max(255, "Username is too long").default(""),
-  password: z.string().max(1024, "Password is too long").default(""),
+  password: z.string().min(1, "Password is required").max(1024, "Password is too long"),
   url: z
     .string()
     .max(2048, "URL is too long")
@@ -49,13 +49,13 @@ export const entrySchema = z.object({
       (v) => {
         if (!v) return true;
         try {
-          new URL(v);
-          return true;
+          const url = new URL(v);
+          return ["http:", "https:"].includes(url.protocol);
         } catch {
           return false;
         }
       },
-      { message: "Invalid URL format" }
+      { message: "Invalid URL format. Only http and https URLs are allowed." }
     )
     .default(""),
 });

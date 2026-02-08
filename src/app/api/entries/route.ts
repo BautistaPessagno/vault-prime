@@ -9,6 +9,15 @@ import {
   type EntryRow,
 } from "@/src/lib/entries/crypto";
 import { getUserVerificationStatus } from "@/src/lib/auth/verify-user";
+import { entrySchema } from "@/src/lib/validation/schemas";
+import { checkRateLimit } from "@/src/lib/security/rate-limit";
+import { logAuditEvent, getClientIp, getUserAgent } from "@/src/lib/security/audit-log";
+
+const ENTRY_WRITE_RATE_LIMIT = {
+  windowMs: 60 * 1000, // 1 minute
+  maxAttempts: 30,
+  keyPrefix: "ratelimit:entries:write:",
+};
 
 export async function GET() {
   const session = await getSessionData();
@@ -54,7 +63,7 @@ export async function GET() {
       .where(eq(entriesTable.user_id, userIdForQuery))
       .orderBy(desc(entriesTable.last_edited), desc(entriesTable.id));
   } catch (error) {
-    console.error("[Entries] Database error:", error);
+    console.error("[Entries] Database error:", error instanceof Error ? error.message : "unknown");
     return NextResponse.json({ error: "db" }, { status: 500 });
   }
 
@@ -98,15 +107,19 @@ export async function POST(req: Request) {
   }
   const userIdForQuery = userId;
 
+  // Rate limit entry writes per user
+  const rateLimit = await checkRateLimit(userId, ENTRY_WRITE_RATE_LIMIT);
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
+
   const body = await req.json().catch(() => null);
 
-  const name = String(body?.name ?? "").trim();
-  const username = String(body?.username ?? "").trim();
-  const password = String(body?.password ?? "");
-  const url = String(body?.url ?? username).trim();
-  if (!name || !password) {
-    return NextResponse.json({ error: "missing_fields" }, { status: 400 });
+  const parseResult = entrySchema.safeParse(body);
+  if (!parseResult.success) {
+    return NextResponse.json({ error: "validation", errors: parseResult.error.flatten().fieldErrors }, { status: 400 });
   }
+  const { name, username, password, url } = parseResult.data;
 
   const encryptedFields = await encryptEntryFields(
     { name, username, password, url },
@@ -143,13 +156,21 @@ export async function POST(req: Request) {
     });
     entryRow = inserted[0] ?? null;
   } catch (error) {
-    console.error("[Entries POST] Database error:", error);
+    console.error("[Entries POST] Database error:", error instanceof Error ? error.message : "unknown");
     return NextResponse.json({ error: "db" }, { status: 500 });
   }
 
   if (!entryRow) {
     return NextResponse.json({ error: "db" }, { status: 500 });
   }
+
+  await logAuditEvent({
+    userId,
+    eventType: "entry_created",
+    ipAddress: getClientIp(req),
+    userAgent: getUserAgent(req),
+    metadata: { entryId: entryRow.id },
+  });
 
   try {
     const entry = {
@@ -158,7 +179,7 @@ export async function POST(req: Request) {
     };
     return NextResponse.json({ entry }, { status: 201 });
   } catch (decryptError) {
-    console.error("[Entries POST] Decrypt error:", decryptError);
+    console.error("[Entries POST] Decrypt error:", decryptError instanceof Error ? decryptError.message : "unknown");
     return NextResponse.json({ error: "decrypt" }, { status: 400 });
   }
 }

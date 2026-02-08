@@ -32,7 +32,7 @@ export async function getUserVerificationStatus(
 
     return { status: "ok", email: user.email };
   } catch (error) {
-    console.error("[Auth Verify User] Database error:", error);
+    console.error("[Auth Verify User] Database error:", error instanceof Error ? error.message : "unknown");
     return { status: "error" };
   }
 }

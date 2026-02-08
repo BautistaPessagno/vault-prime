@@ -108,7 +108,7 @@ export async function POST(req: Request) {
       .set({ verified_at: new Date() })
       .where(eq(usersTable.id, userId));
   } catch (error) {
-    console.error("[Auth Verify Email] Update error:", error);
+    console.error("[Auth Verify Email] Update error:", error instanceof Error ? error.message : "unknown");
     return NextResponse.json({ error: "db" }, { status: 500 });
   }
 

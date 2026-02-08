@@ -65,7 +65,7 @@ export async function getSessionData(): Promise<SessionData> {
 
     return { userId, encryptionKey };
   } catch (error) {
-    console.error("[Auth] Token verification failed:", error);
+    console.error("[Auth] Token verification failed:", error instanceof Error ? error.message : "unknown");
     return null;
   }
 }
@@ -118,7 +118,7 @@ export async function decryptValue(value: string, key: string) {
   }
   const [nonce, ciphertext] = value.split(":");
   if (!nonce || !ciphertext) {
-    return value;
+    throw new Error("Malformed encrypted value: expected nonce:ciphertext format");
   }
   return decrypt(key, nonce, ciphertext);
 }

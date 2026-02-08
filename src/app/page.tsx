@@ -369,12 +369,26 @@ export default function Home() {
                 isCreating={isCreating}
                 onDraftChange={setDraft}
                 onGeneratePassword={() => {
-                  // Generate cryptographically secure password
-                  const array = new Uint8Array(24);
+                  // Generate cryptographically secure password with full charset
+                  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+                  const length = 20;
+                  const array = new Uint8Array(length);
                   crypto.getRandomValues(array);
-                  const password = Array.from(array, (byte) =>
-                    byte.toString(36).padStart(2, '0')
-                  ).join('').slice(0, 20);
+                  // Reject bytes >= 252 to avoid modulo bias (252 = 72 * 3.5, closest multiple of charset.length under 256)
+                  const maxValid = 256 - (256 % charset.length);
+                  const chars: string[] = [];
+                  let i = 0;
+                  while (chars.length < length) {
+                    if (i >= array.length) {
+                      crypto.getRandomValues(array);
+                      i = 0;
+                    }
+                    if (array[i] < maxValid) {
+                      chars.push(charset[array[i] % charset.length]);
+                    }
+                    i++;
+                  }
+                  const password = chars.join('');
                   setDraft({
                     ...draft,
                     password,

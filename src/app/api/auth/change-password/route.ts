@@ -62,7 +62,7 @@ export async function POST(req: Request) {
       .limit(1);
     user = rows[0];
   } catch (error) {
-    console.error("[Auth ChangePassword] Database error:", error);
+    console.error("[Auth ChangePassword] Database error:", error instanceof Error ? error.message : "unknown");
     return NextResponse.json({ error: "db" }, { status: 500 });
   }
 
@@ -100,7 +100,7 @@ export async function POST(req: Request) {
       })
       .where(eq(usersTable.id, session.userId));
   } catch (error) {
-    console.error("[Auth ChangePassword] Update error:", error);
+    console.error("[Auth ChangePassword] Update error:", error instanceof Error ? error.message : "unknown");
     return NextResponse.json({ error: "db" }, { status: 500 });
   }
 
@@ -116,7 +116,7 @@ export async function POST(req: Request) {
       }
     }
   } catch (error) {
-    console.error("[Auth ChangePassword] Cache cleanup error:", error);
+    console.error("[Auth ChangePassword] Cache cleanup error:", error instanceof Error ? error.message : "unknown");
     // No fallar si no podemos limpiar el cache
   }
 

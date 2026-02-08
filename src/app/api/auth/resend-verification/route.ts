@@ -62,7 +62,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error) {
-    console.error("[Auth Resend Verification] Database error:", error);
+    console.error("[Auth Resend Verification] Database error:", error instanceof Error ? error.message : "unknown");
     return NextResponse.json({ ok: true }, { status: 200 });
   }
 }

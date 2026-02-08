@@ -83,9 +83,9 @@ function withSuccess(request: Request, token: string) {
   response.cookies.set("session", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
-    maxAge: 1000 * 60 * 15, // 15 minutes
+    maxAge: 60 * 15, // 15 minutes (in seconds)
   });
 
   return response;
@@ -151,11 +151,15 @@ export async function POST(req: Request) {
       .limit(1);
     user = rows[0];
   } catch (error) {
-    console.error("[Auth Login] Database error:", error);
+    console.error("[Auth Login] Database error:", error instanceof Error ? error.message : "unknown");
     return withError(req, "db", 500);
   }
 
   if (!user?.master_password_hash) {
+    // Perform dummy hash to normalize timing and prevent user enumeration
+    const dummySalt = Buffer.from(email);
+    await hash("dummy-password-for-timing", dummySalt);
+
     await logAuditEvent({
       eventType: "login_failed",
       ipAddress,
