@@ -231,7 +231,19 @@ export async function POST(req: Request) {
   }
   await resetRateLimit(email, EMAIL_RATE_LIMIT.keyPrefix);
 
-  // Derive stretched master key
+  // Check for missing encryption key (data integrity issue)
+  if (!user.encryption_key) {
+    await logAuditEvent({
+      userId: user.id,
+      eventType: "login_failed",
+      ipAddress,
+      userAgent,
+      metadata: { reason: "missing_encryption_key", email },
+    });
+    return withError(req, "invalid", 500);
+  }
+
+  // Derive stretched master key and decrypt encryption key
   const strechedMasterKey = await deriveKey(masterKey, password);
   const encryptionKey = await decryptValue(user.encryption_key, strechedMasterKey);
 
