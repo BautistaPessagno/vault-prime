@@ -231,6 +231,11 @@ export default function Home() {
       });
       if (!res.ok) {
         if (await redirectForAuth(res)) return null;
+        const errData = await res.json().catch(() => null);
+        if (errData?.error === "validation") {
+          const msgs = Object.values(errData.errors ?? {}).flat();
+          throw new Error(msgs.join(". ") || "Invalid input.");
+        }
         throw new Error("db");
       }
 
@@ -238,8 +243,9 @@ export default function Home() {
 
       const data = await res.json();
       return data.entry as Entry;
-    } catch {
-      setNotice("Error saving changes.");
+    } catch (err) {
+      const msg = err instanceof Error && err.message !== "db" ? err.message : "Error saving changes.";
+      setNotice(msg);
       return null;
     }
   };
@@ -249,6 +255,19 @@ export default function Home() {
     if (!draft.name.trim() || !draft.password) {
       setNotice("Name and password are required.");
       return;
+    }
+    const trimmedUrl = draft.url.trim();
+    if (trimmedUrl) {
+      try {
+        const parsed = new URL(trimmedUrl);
+        if (!["http:", "https:"].includes(parsed.protocol)) {
+          setNotice("Invalid URL. Only http and https links are allowed.");
+          return;
+        }
+      } catch {
+        setNotice("Invalid URL format. Make sure it starts with https://");
+        return;
+      }
     }
 
     const now = new Date().toISOString();
@@ -328,7 +347,7 @@ export default function Home() {
   };
 
   const isErrorNotice = notice
-    ? /error|no se pudo|requeridos/i.test(notice)
+    ? /error|no se pudo|requeridos|invalid/i.test(notice)
     : false;
 
   if (loading && entries.length === 0) {

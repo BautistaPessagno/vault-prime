@@ -8,7 +8,9 @@ export const signupSchema = z
       .email("Invalid email format")
       .transform((v) => v.trim().toLowerCase()),
     password: z.string().min(12, "Password must be at least 12 characters"),
-    passwordConfirmation: z.string().min(1, "Password confirmation is required"),
+    passwordConfirmation: z
+      .string()
+      .min(1, "Password confirmation is required"),
   })
   .refine((data) => data.password === data.passwordConfirmation, {
     message: "Passwords do not match",
@@ -41,7 +43,10 @@ export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
 export const entrySchema = z.object({
   name: z.string().min(1, "Name is required").max(255, "Name is too long"),
   username: z.string().max(255, "Username is too long").default(""),
-  password: z.string().min(1, "Password is required").max(1024, "Password is too long"),
+  password: z
+    .string()
+    .min(1, "Password is required")
+    .max(1024, "Password is too long"),
   url: z
     .string()
     .max(2048, "URL is too long")
@@ -55,7 +60,7 @@ export const entrySchema = z.object({
           return false;
         }
       },
-      { message: "Invalid URL format. Only http and https URLs are allowed." }
+      { message: "Invalid URL format. Only http and https URLs are allowed." },
     )
     .default(""),
 });
