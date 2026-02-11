@@ -9,6 +9,15 @@ import {
   type EntryRow,
 } from "@/src/lib/entries/crypto";
 import { getUserVerificationStatus } from "@/src/lib/auth/verify-user";
+import { entrySchema } from "@/src/lib/validation/schemas";
+import { checkRateLimit } from "@/src/lib/security/rate-limit";
+import { logAuditEvent, getClientIp, getUserAgent } from "@/src/lib/security/audit-log";
+
+const ENTRY_WRITE_RATE_LIMIT = {
+  windowMs: 60 * 1000, // 1 minute
+  maxAttempts: 30,
+  keyPrefix: "ratelimit:entries:write:",
+};
 
 type RouteContext = {
   params: Promise<{
@@ -47,15 +56,19 @@ export async function PUT(req: Request, context: RouteContext) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
+  // Rate limit entry writes per user
+  const rateLimit = await checkRateLimit(userId, ENTRY_WRITE_RATE_LIMIT);
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
+
   const body = await req.json().catch(() => null);
 
-  const name = String(body?.name ?? "").trim();
-  const username = String(body?.username ?? "").trim();
-  const password = String(body?.password ?? "");
-  const url = String(body?.url ?? username).trim();
-  if (!name || !password) {
-    return NextResponse.json({ error: "missing_fields" }, { status: 400 });
+  const parseResult = entrySchema.safeParse(body);
+  if (!parseResult.success) {
+    return NextResponse.json({ error: "validation", errors: parseResult.error.flatten().fieldErrors }, { status: 400 });
   }
+  const { name, username, password, url } = parseResult.data;
 
   const encryptedFields = await encryptEntryFields(
     { name, username, password, url },
@@ -96,13 +109,21 @@ export async function PUT(req: Request, context: RouteContext) {
       });
     entryRow = updated[0] ?? null;
   } catch (error) {
-    console.error("[Entries PUT] Database error:", error);
+    console.error("[Entries PUT] Database error:", error instanceof Error ? error.message : "unknown");
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
   if (!entryRow) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
+
+  await logAuditEvent({
+    userId,
+    eventType: "entry_updated",
+    ipAddress: getClientIp(req),
+    userAgent: getUserAgent(req),
+    metadata: { entryId: entryRow.id },
+  });
 
   try {
     const entry = {
@@ -111,12 +132,12 @@ export async function PUT(req: Request, context: RouteContext) {
     };
     return NextResponse.json({ entry });
   } catch (decryptError) {
-    console.error("[Entries PUT] Decrypt error:", decryptError);
+    console.error("[Entries PUT] Decrypt error:", decryptError instanceof Error ? decryptError.message : "unknown");
     return NextResponse.json({ error: "decrypt" }, { status: 400 });
   }
 }
 
-export async function DELETE(_req: Request, context: RouteContext) {
+export async function DELETE(req: Request, context: RouteContext) {
   const { id } = await context.params;
 
   const session = await getSessionData();
@@ -148,6 +169,12 @@ export async function DELETE(_req: Request, context: RouteContext) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
+  // Rate limit entry writes per user
+  const deleteRateLimit = await checkRateLimit(userId, ENTRY_WRITE_RATE_LIMIT);
+  if (!deleteRateLimit.allowed) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
+
   try {
     await db
       .delete(entriesTable)
@@ -158,9 +185,17 @@ export async function DELETE(_req: Request, context: RouteContext) {
         ),
       );
   } catch (error) {
-    console.error("[Entries DELETE] Database error:", error);
+    console.error("[Entries DELETE] Database error:", error instanceof Error ? error.message : "unknown");
     return NextResponse.json({ error: "db" }, { status: 500 });
   }
+
+  await logAuditEvent({
+    userId,
+    eventType: "entry_deleted",
+    ipAddress: getClientIp(req),
+    userAgent: getUserAgent(req),
+    metadata: { entryId },
+  });
 
   return NextResponse.json({ ok: true });
 }

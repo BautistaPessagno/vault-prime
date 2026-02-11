@@ -2,8 +2,8 @@
 import * as argon2 from "argon2";
 import { randomBytes, bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import { gcm } from "@noble/ciphers/aes.js";
-import { pbkdf2 } from "@noble/hashes/pbkdf2.js";
 import { sha256 } from "@noble/hashes/sha2.js";
+import { hkdf } from "@noble/hashes/hkdf.js";
 
 // ----------------------------- Argon2 hash ------------------------------------------------
 //
@@ -34,10 +34,14 @@ export async function verify(password: string, hashedPassword: string) {
 //el payloead es el master key y el salt es la password
 export async function deriveKey(payload: string, salt: string) {
   const enc = new TextEncoder();
-  const k = pbkdf2(sha256, enc.encode(payload), enc.encode(salt), {
-    c: 600_000,
-    dkLen: 32,
-  });
+  const k = hkdf(
+    sha256,
+    enc.encode(payload),
+    enc.encode(salt),
+    enc.encode("vault-prime-derivation"),
+    32,
+  );
+
   return bytesToHex(k);
 }
 

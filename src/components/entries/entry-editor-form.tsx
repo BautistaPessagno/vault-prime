@@ -26,6 +26,26 @@ export default function EntryEditorForm({
     null
   );
 
+  const nameError = draft.name.length > 255 ? "Name is too long (max 255 characters)." : "";
+  const usernameError = draft.username.length > 255 ? "Username is too long (max 255 characters)." : "";
+
+  const urlValue = draft.url.trim();
+  let urlError = "";
+  if (urlValue) {
+    if (urlValue.length > 2048) {
+      urlError = "URL is too long (max 2048 characters).";
+    } else {
+      try {
+        const parsed = new URL(urlValue);
+        if (!["http:", "https:"].includes(parsed.protocol)) {
+          urlError = "Only http and https links are allowed.";
+        }
+      } catch {
+        urlError = "Enter a valid URL starting with https://";
+      }
+    }
+  }
+
   // Check password strength as user types
   useEffect(() => {
     if (!draft.password) {
@@ -70,9 +90,12 @@ export default function EntryEditorForm({
               onChange={(e) =>
                 onDraftChange({ ...draft, name: e.target.value })
               }
-              className="w-full rounded-xl border border-[color:var(--border)] bg-transparent px-4 py-3 text-sm outline-none transition focus:border-[color:var(--accent)]"
+              className={`w-full rounded-xl border bg-transparent px-4 py-3 text-sm outline-none transition ${nameError ? "border-red-400 focus:border-red-400" : "border-[color:var(--border)] focus:border-[color:var(--accent)]"}`}
               placeholder="Site name"
             />
+            {nameError && (
+              <p className="text-xs text-red-400">{nameError}</p>
+            )}
           </div>
           <div className="space-y-2">
             <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
@@ -82,9 +105,12 @@ export default function EntryEditorForm({
               type="text"
               value={draft.url}
               onChange={(e) => onDraftChange({ ...draft, url: e.target.value })}
-              className="w-full rounded-xl border border-[color:var(--border)] bg-transparent px-4 py-3 text-sm outline-none transition focus:border-[color:var(--accent)]"
+              className={`w-full rounded-xl border bg-transparent px-4 py-3 text-sm outline-none transition ${urlError ? "border-red-400 focus:border-red-400" : "border-[color:var(--border)] focus:border-[color:var(--accent)]"}`}
               placeholder="https://example.com"
             />
+            {urlError && (
+              <p className="text-xs text-red-400">{urlError}</p>
+            )}
           </div>
           <div className="space-y-2">
             <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
@@ -96,9 +122,12 @@ export default function EntryEditorForm({
               onChange={(e) =>
                 onDraftChange({ ...draft, username: e.target.value })
               }
-              className="w-full rounded-xl border border-[color:var(--border)] bg-transparent px-4 py-3 text-sm outline-none transition focus:border-[color:var(--accent)]"
+              className={`w-full rounded-xl border bg-transparent px-4 py-3 text-sm outline-none transition ${usernameError ? "border-red-400 focus:border-red-400" : "border-[color:var(--border)] focus:border-[color:var(--accent)]"}`}
               placeholder="user@email.com"
             />
+            {usernameError && (
+              <p className="text-xs text-red-400">{usernameError}</p>
+            )}
           </div>
           <div className="space-y-2 md:col-span-2">
             <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">

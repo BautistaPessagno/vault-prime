@@ -30,7 +30,7 @@ export async function GET() {
       createdAt: profile.created_at ?? null,
     });
   } catch (error) {
-    console.error("[Auth Profile] Database error:", error);
+    console.error("[Auth Profile] Database error:", error instanceof Error ? error.message : "unknown");
     return NextResponse.json({ error: "db" }, { status: 500 });
   }
 }

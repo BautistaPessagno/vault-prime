@@ -35,7 +35,7 @@ export async function generateAuthCode(id: string) {
       })
       .returning({ id: emailVerificationCodesTable.id });
   } catch (error) {
-    console.error("[Auth Signup] Insert error:", error);
+    console.error("[Auth Signup] Insert error:", error instanceof Error ? error.message : "unknown");
     return null;
   }
 
@@ -106,7 +106,7 @@ export async function verifyCode(
 
     return { valid: true, userId };
   } catch (error) {
-    console.error("[Verify Code] Database error:", error);
+    console.error("[Verify Code] Database error:", error instanceof Error ? error.message : "unknown");
     return { valid: false, error: "db" };
   }
 }

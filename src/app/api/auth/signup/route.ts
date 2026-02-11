@@ -17,11 +17,18 @@ import { sendVerificationEmail } from "@/src/lib/email/send-verification-email";
 import { z } from "zod";
 import { signupSchema } from "@/src/lib/validation/schemas";
 import { validatePassword } from "@/src/lib/security/password-validation";
+import { checkRateLimit } from "@/src/lib/security/rate-limit";
 import {
   logAuditEvent,
   getClientIp,
   getUserAgent,
 } from "@/src/lib/security/audit-log";
+
+const SIGNUP_RATE_LIMIT = {
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  maxAttempts: 5,
+  keyPrefix: "ratelimit:signup:ip:",
+};
 
 function wantsJson(request: Request) {
   const accept = request.headers.get("accept") ?? "";
@@ -70,9 +77,9 @@ function withSuccess(
     response.cookies.set("session", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "strict",
       path: "/",
-      maxAge: 1000 * 60 * 15, // 15 minutes
+      maxAge: 60 * 15, // 15 minutes (in seconds)
     });
     return response;
   }
@@ -83,9 +90,9 @@ function withSuccess(
   response.cookies.set("session", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
-    maxAge: 1000 * 60 * 15, // 15 minutes
+    maxAge: 60 * 15, // 15 minutes (in seconds)
   });
   return response;
 }
@@ -93,6 +100,20 @@ function withSuccess(
 export async function POST(req: Request) {
   const ipAddress = getClientIp(req);
   const userAgent = getUserAgent(req);
+
+  // Check IP rate limit
+  if (ipAddress) {
+    const ipRateLimit = await checkRateLimit(ipAddress, SIGNUP_RATE_LIMIT);
+    if (!ipRateLimit.allowed) {
+      await logAuditEvent({
+        eventType: "signup_failed",
+        ipAddress,
+        userAgent,
+        metadata: { reason: "ip_rate_limited" },
+      });
+      return withError(req, "rate_limited", 429);
+    }
+  }
 
   // Parse and validate input with Zod
   const body = await readBody(req);
@@ -139,7 +160,7 @@ export async function POST(req: Request) {
       .limit(1);
     existingId = existing[0]?.id;
   } catch (error) {
-    console.error("[Auth Signup] Database error:", error);
+    console.error("[Auth Signup] Database error:", error instanceof Error ? error.message : "unknown");
     return withError(req, "db", 500);
   }
 
@@ -173,7 +194,7 @@ export async function POST(req: Request) {
       .returning({ id: usersTable.id });
     createdUserId = created[0]?.id;
   } catch (error) {
-    console.error("[Auth Signup] Insert error:", error);
+    console.error("[Auth Signup] Insert error:", error instanceof Error ? error.message : "unknown");
     return withError(req, "insert", 500);
   }
 

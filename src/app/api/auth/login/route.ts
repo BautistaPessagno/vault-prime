@@ -4,7 +4,6 @@ import { hash, verify, deriveKey } from "@/src/lib/auth/encryption";
 import { decryptValue } from "@/src/lib/entries/crypto";
 import { signSessionToken } from "@/src/lib/auth/jwt";
 import { generateSessionId } from "@/src/lib/auth/session";
-import { migrateLegacyUser } from "@/src/lib/auth/migration";
 import { getKeyCache, CACHE_CONFIG } from "@/src/lib/cache";
 import { db } from "@/src/db";
 import { usersTable } from "@/src/db/schema";
@@ -83,9 +82,9 @@ function withSuccess(request: Request, token: string) {
   response.cookies.set("session", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
-    maxAge: 1000 * 60 * 15, // 15 minutes
+    maxAge: 60 * 15, // 15 minutes (in seconds)
   });
 
   return response;
@@ -151,11 +150,15 @@ export async function POST(req: Request) {
       .limit(1);
     user = rows[0];
   } catch (error) {
-    console.error("[Auth Login] Database error:", error);
+    console.error("[Auth Login] Database error:", error instanceof Error ? error.message : "unknown");
     return withError(req, "db", 500);
   }
 
   if (!user?.master_password_hash) {
+    // Perform dummy hash to normalize timing and prevent user enumeration
+    const dummySalt = Buffer.from(email);
+    await hash("dummy-password-for-timing", dummySalt);
+
     await logAuditEvent({
       eventType: "login_failed",
       ipAddress,
@@ -228,17 +231,21 @@ export async function POST(req: Request) {
   }
   await resetRateLimit(email, EMAIL_RATE_LIMIT.keyPrefix);
 
-  // Derive stretched master key
-  const strechedMasterKey = await deriveKey(masterKey, password);
-  let encryptionKey: string;
-
+  // Check for missing encryption key (data integrity issue)
   if (!user.encryption_key) {
-    // Legacy user without encryption_key - migrate to new model
-    encryptionKey = await migrateLegacyUser(user.id, strechedMasterKey);
-  } else {
-    // User with encryption_key - decrypt it
-    encryptionKey = await decryptValue(user.encryption_key, strechedMasterKey);
+    await logAuditEvent({
+      userId: user.id,
+      eventType: "login_failed",
+      ipAddress,
+      userAgent,
+      metadata: { reason: "missing_encryption_key", email },
+    });
+    return withError(req, "invalid", 500);
   }
+
+  // Derive stretched master key and decrypt encryption key
+  const strechedMasterKey = await deriveKey(masterKey, password);
+  const encryptionKey = await decryptValue(user.encryption_key, strechedMasterKey);
 
   // Store encryption key in cache
   const sessionId = generateSessionId();

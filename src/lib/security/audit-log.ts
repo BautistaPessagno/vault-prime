@@ -12,7 +12,11 @@ export type AuditEventType =
   | "email_verification_max_attempts"
   | "logout"
   | "password_changed"
-  | "account_deleted";
+  | "account_deleted"
+  | "entry_created"
+  | "entry_updated"
+  | "entry_deleted"
+  | "entry_copied";
 
 interface AuditEventParams {
   userId?: string | null;
@@ -32,7 +36,7 @@ export async function logAuditEvent(params: AuditEventParams): Promise<void> {
       metadata: params.metadata ? JSON.stringify(params.metadata) : null,
     });
   } catch (error) {
-    console.error("[Audit Log] Failed to log event:", error);
+    console.error("[Audit Log] Failed to log event:", error instanceof Error ? error.message : "unknown");
   }
 }
 
