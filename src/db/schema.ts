@@ -38,7 +38,7 @@ export const emailVerificationCodesTable = pgTable("email_verification_codes", {
   created_at: timestamp("created_at", { withTimezone: true, mode: "date" })
     .notNull()
     .defaultNow(),
-  expires_at: timestamp("expires_at", { withTimezone: true, mode: "date" }),
+  expires_at: timestamp("expires_at", { withTimezone: true, mode: "date" }).notNull(),
   attempts: integer("attempts").notNull().default(0),
 });
 

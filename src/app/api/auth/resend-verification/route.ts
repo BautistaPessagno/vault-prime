@@ -4,6 +4,20 @@ import { db } from "@/src/db";
 import { usersTable } from "@/src/db/schema";
 import { generateAuthCode } from "@/src/lib/auth/verification";
 import { sendVerificationEmail } from "@/src/lib/email/send-verification-email";
+import { checkRateLimit } from "@/src/lib/security/rate-limit";
+import { getClientIp } from "@/src/lib/security/audit-log";
+
+const RESEND_IP_RATE_LIMIT = {
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  maxAttempts: 3,
+  keyPrefix: "ratelimit:resend:ip:",
+};
+
+const RESEND_EMAIL_RATE_LIMIT = {
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  maxAttempts: 5,
+  keyPrefix: "ratelimit:resend:email:",
+};
 
 function normalizeEmail(value: unknown) {
   return String(value ?? "")
@@ -12,6 +26,15 @@ function normalizeEmail(value: unknown) {
 }
 
 export async function POST(req: Request) {
+  // Rate limit by IP
+  const ipAddress = getClientIp(req);
+  if (ipAddress) {
+    const ipRateLimit = await checkRateLimit(ipAddress, RESEND_IP_RATE_LIMIT);
+    if (!ipRateLimit.allowed) {
+      return NextResponse.json({ ok: true }, { status: 200 });
+    }
+  }
+
   let email: string;
   try {
     const body = await req.json();
@@ -22,6 +45,12 @@ export async function POST(req: Request) {
 
   // Always respond with ok to avoid email enumeration.
   if (!email) {
+    return NextResponse.json({ ok: true }, { status: 200 });
+  }
+
+  // Rate limit by email
+  const emailRateLimit = await checkRateLimit(email, RESEND_EMAIL_RATE_LIMIT);
+  if (!emailRateLimit.allowed) {
     return NextResponse.json({ ok: true }, { status: 200 });
   }
 

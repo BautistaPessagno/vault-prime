@@ -6,11 +6,18 @@ import { eq } from "drizzle-orm";
 import { verifySessionToken } from "@/src/lib/auth/jwt";
 import { verifyCode } from "@/src/lib/auth/verification";
 import { verifyEmailSchema } from "@/src/lib/validation/schemas";
+import { checkRateLimit } from "@/src/lib/security/rate-limit";
 import {
   logAuditEvent,
   getClientIp,
   getUserAgent,
 } from "@/src/lib/security/audit-log";
+
+const VERIFY_IP_RATE_LIMIT = {
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  maxAttempts: 10,
+  keyPrefix: "ratelimit:verify:ip:",
+};
 
 async function getSuccessRedirect(request: Request) {
   const cookieStore = await cookies();
@@ -47,6 +54,14 @@ async function getUserIdFromSession(): Promise<string | null> {
 export async function POST(req: Request) {
   const ipAddress = getClientIp(req);
   const userAgent = getUserAgent(req);
+
+  // Rate limit by IP
+  if (ipAddress) {
+    const ipRateLimit = await checkRateLimit(ipAddress, VERIFY_IP_RATE_LIMIT);
+    if (!ipRateLimit.allowed) {
+      return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+    }
+  }
 
   // Parse and validate input
   let body: unknown;

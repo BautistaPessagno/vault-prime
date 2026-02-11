@@ -4,7 +4,7 @@ import { randomBytes, bytesToHex } from "@noble/hashes/utils.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { emailVerificationCodesTable } from "@/src/db/schema";
 import { db } from "@/src/db";
-import { eq, sql, and, gt } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 const MAX_VERIFICATION_ATTEMPTS = 3;
 
@@ -55,7 +55,7 @@ export async function verifyCode(
   const codeHash = hashCode(code);
 
   try {
-    // Find verification code for user that hasn't expired
+    // Find the most recent verification code for user
     const rows = await db
       .select({
         id: emailVerificationCodesTable.id,
@@ -64,18 +64,18 @@ export async function verifyCode(
         attempts: emailVerificationCodesTable.attempts,
       })
       .from(emailVerificationCodesTable)
-      .where(
-        and(
-          eq(emailVerificationCodesTable.user_id, userId),
-          gt(emailVerificationCodesTable.expires_at, new Date())
-        )
-      )
+      .where(eq(emailVerificationCodesTable.user_id, userId))
       .orderBy(emailVerificationCodesTable.created_at)
       .limit(1);
 
     const row = rows[0];
     if (!row) {
       return { valid: false, error: "invalid" };
+    }
+
+    // Check if code has expired
+    if (row.expires_at <= new Date()) {
+      return { valid: false, error: "expired" };
     }
 
     // Check max attempts

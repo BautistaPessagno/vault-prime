@@ -15,6 +15,13 @@ import { verifySessionToken } from "@/src/lib/auth/jwt";
 import { getKeyCache } from "@/src/lib/cache";
 import { db } from "@/src/db";
 import { usersTable } from "@/src/db/schema";
+import { checkRateLimit } from "@/src/lib/security/rate-limit";
+
+const CHANGE_PASSWORD_RATE_LIMIT = {
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  maxAttempts: 5,
+  keyPrefix: "ratelimit:change-password:",
+};
 
 type ChangePasswordBody = {
   currentPassword: string;
@@ -47,6 +54,12 @@ export async function POST(req: Request) {
   const session = await getSessionData();
   if (!session) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  // Rate limit by userId
+  const rateLimit = await checkRateLimit(session.userId, CHANGE_PASSWORD_RATE_LIMIT);
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
 
   // 3. Obtener usuario de BD
