@@ -11,18 +11,8 @@ declare global {
 }
 
 export function getKeyCache(): KeyCache {
-  if (globalThis.__keyCacheInstance) {
-    return globalThis.__keyCacheInstance;
-  }
-
-  if (process.env.REDIS_URL) {
-    // Dynamically import Redis cache only when needed
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { redisCache } = require("./redisCache");
-    globalThis.__keyCacheInstance = redisCache as KeyCache;
-  } else {
+  if (!globalThis.__keyCacheInstance) {
     globalThis.__keyCacheInstance = memoryCache;
   }
-
-  return globalThis.__keyCacheInstance!;
+  return globalThis.__keyCacheInstance;
 }
