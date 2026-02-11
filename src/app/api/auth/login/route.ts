@@ -63,7 +63,7 @@ function withError(
   request: Request,
   code: string,
   status: number,
-  headers?: Record<string, string>
+  headers?: Record<string, string>,
 ) {
   if (wantsJson(request)) {
     return NextResponse.json({ error: code }, { status, headers });
@@ -150,7 +150,10 @@ export async function POST(req: Request) {
       .limit(1);
     user = rows[0];
   } catch (error) {
-    console.error("[Auth Login] Database error:", error instanceof Error ? error.message : "unknown");
+    console.error(
+      "[Auth Login] Database error:",
+      error instanceof Error ? error.message : "unknown",
+    );
     return withError(req, "db", 500);
   }
 
@@ -244,8 +247,11 @@ export async function POST(req: Request) {
   }
 
   // Derive stretched master key and decrypt encryption key
-  const strechedMasterKey = await deriveKey(masterKey, password);
-  const encryptionKey = await decryptValue(user.encryption_key, strechedMasterKey);
+  const stretchedMasterKey = await deriveKey(masterKey, password);
+  const encryptionKey = await decryptValue(
+    user.encryption_key,
+    stretchedMasterKey,
+  );
 
   // Store encryption key in cache
   const sessionId = generateSessionId();

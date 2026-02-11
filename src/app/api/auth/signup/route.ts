@@ -55,7 +55,10 @@ function withError(
   request: Request,
   code: string,
   status: number,
-  details?: { errors?: string[]; feedback?: { warning: string; suggestions: string[] } }
+  details?: {
+    errors?: string[];
+    feedback?: { warning: string; suggestions: string[] };
+  },
 ) {
   if (wantsJson(request)) {
     return NextResponse.json({ error: code, ...details }, { status });
@@ -70,7 +73,7 @@ function withSuccess(
   request: Request,
   email: string,
   emailSent: boolean,
-  token: string
+  token: string,
 ) {
   if (wantsJson(request)) {
     const response = NextResponse.json({ ok: true, emailSent, token });
@@ -160,7 +163,10 @@ export async function POST(req: Request) {
       .limit(1);
     existingId = existing[0]?.id;
   } catch (error) {
-    console.error("[Auth Signup] Database error:", error instanceof Error ? error.message : "unknown");
+    console.error(
+      "[Auth Signup] Database error:",
+      error instanceof Error ? error.message : "unknown",
+    );
     return withError(req, "db", 500);
   }
 
@@ -177,10 +183,10 @@ export async function POST(req: Request) {
   const salt = Buffer.from(email);
   const masterKey = await hash(password, salt);
   const masterPasswordHashValue = await masterPasswordHash(masterKey);
-  const strechedMasterKey = await deriveKey(masterKey, password);
+  const stretchedMasterKey = await deriveKey(masterKey, password);
   const encryptionKey = await generateEncryptionKey();
 
-  const encryptedKey = await encryptValue(encryptionKey, strechedMasterKey);
+  const encryptedKey = await encryptValue(encryptionKey, stretchedMasterKey);
 
   let createdUserId: string | undefined;
   try {
@@ -194,7 +200,10 @@ export async function POST(req: Request) {
       .returning({ id: usersTable.id });
     createdUserId = created[0]?.id;
   } catch (error) {
-    console.error("[Auth Signup] Insert error:", error instanceof Error ? error.message : "unknown");
+    console.error(
+      "[Auth Signup] Insert error:",
+      error instanceof Error ? error.message : "unknown",
+    );
     return withError(req, "insert", 500);
   }
 
