@@ -159,7 +159,4 @@ Each vault entry field is encrypted using AES-256-GCM.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `REDIS_URL` | - | Redis connection URL (optional) |
 | `KEY_CACHE_TTL` | 900 | Cache TTL in seconds (15 min) |
-
-If `REDIS_URL` is not set, an in-memory cache is used.
