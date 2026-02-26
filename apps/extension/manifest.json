@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Vault Prime",
+  "version": "0.1.0",
+  "description": "Vault Prime browser extension",
+  "permissions": [],
+  "action": {
+    "default_popup": "src/popup.html"
+  }
+}
