@@ -1,0 +1,149 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+:root {
+  --background: #0b132b;
+  --foreground: #f8f8ff;
+  --card: #111a33;
+  --border: #24304a;
+  --muted: #0f1a33;
+  --muted-foreground: #b3c0d8;
+  --accent: #00f0ff;
+  --accent-foreground: #0b132b;
+  --danger: #ff4d4d;
+  --success: #00c853;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  width: 350px;
+  height: 500px;
+  overflow: hidden;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.vp-input {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--foreground);
+  outline: none;
+  transition: border-color 0.15s;
+  font-family: inherit;
+}
+
+.vp-input:focus {
+  border-color: var(--accent);
+}
+
+.vp-input::placeholder {
+  color: var(--muted-foreground);
+}
+
+.vp-btn {
+  width: 100%;
+  border-radius: 12px;
+  border: none;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s;
+  font-family: inherit;
+}
+
+.vp-btn:hover {
+  filter: brightness(0.95);
+}
+
+.vp-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.vp-btn-primary {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.vp-btn-ghost {
+  background: transparent;
+  color: var(--muted-foreground);
+  border: 1px solid var(--border);
+}
+
+.vp-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  color: var(--muted-foreground);
+  margin-bottom: 6px;
+}
+
+.vp-error {
+  border-radius: 10px;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  padding: 8px 12px;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+.vp-notice {
+  border-radius: 10px;
+  border: 1px solid var(--success);
+  color: var(--success);
+  padding: 8px 12px;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+.vp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.vp-header-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4em;
+  color: var(--muted-foreground);
+}
+
+.vp-scrollable {
+  flex: 1;
+  overflow-y: auto;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 2px;
+}
