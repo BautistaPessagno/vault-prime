@@ -8,6 +8,6 @@ export default defineConfig({
     version: "0.1.0",
     description: "Zero-knowledge password manager",
     permissions: ["storage", "activeTab", "alarms"],
-    host_permissions: ["<all_urls>"],
+    host_permissions: ["https://*/*"],
   },
 });
