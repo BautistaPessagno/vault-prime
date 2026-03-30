@@ -16,7 +16,9 @@ export type AuditEventType =
   | "entry_created"
   | "entry_updated"
   | "entry_deleted"
-  | "entry_copied";
+  | "entry_copied"
+  | "extension_login_success"
+  | "extension_login_failed";
 
 interface AuditEventParams {
   userId?: string | null;
