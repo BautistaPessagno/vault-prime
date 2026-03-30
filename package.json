@@ -6,7 +6,9 @@
     "dev": "pnpm --filter @vault-prime/web dev",
     "build": "pnpm --filter @vault-prime/web build",
     "start": "pnpm --filter @vault-prime/web start",
-    "lint": "pnpm --filter @vault-prime/web lint"
+    "lint": "pnpm --filter @vault-prime/web lint",
+    "ext:dev": "pnpm --filter @vault-prime/extension dev",
+    "ext:build": "pnpm --filter @vault-prime/extension build"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

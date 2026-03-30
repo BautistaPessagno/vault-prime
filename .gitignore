@@ -40,6 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# wxt (browser extension)
+.wxt/
+.output/
+
 # rust
 target/
 
