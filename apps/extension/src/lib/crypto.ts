@@ -1,7 +1,7 @@
-import { hkdf } from "@noble/hashes/hkdf";
-import { sha256 } from "@noble/hashes/sha2";
-import { bytesToHex, hexToBytes } from "@noble/hashes/utils";
-import { gcm } from "@noble/ciphers/aes";
+import { hkdf } from "@noble/hashes/hkdf.js";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
+import { gcm } from "@noble/ciphers/aes.js";
 
 /**
  * Derive a 32-byte stretched key from master key hash + password using HKDF-SHA256.
