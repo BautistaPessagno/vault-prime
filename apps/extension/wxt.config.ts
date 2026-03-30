@@ -3,11 +3,6 @@ import { defineConfig } from "wxt";
 export default defineConfig({
   srcDir: "src",
   modules: ["@wxt-dev/module-react"],
-  runner: {
-    binaries: {
-      firefox: "firefox",
-    },
-  },
   manifest: {
     name: "Vault Prime",
     version: "0.1.0",
