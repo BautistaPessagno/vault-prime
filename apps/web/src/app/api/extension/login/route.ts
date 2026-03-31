@@ -16,6 +16,9 @@ import {
   getClientIp,
   getUserAgent,
 } from "@/src/lib/security/audit-log";
+import { OPTIONS, withCors } from "../cors";
+
+export { OPTIONS };
 
 type LoginUserRow = {
   id: string;
@@ -51,10 +54,10 @@ export async function POST(req: Request) {
         metadata: { reason: "ip_rate_limited" },
       });
       const retryAfter = Math.ceil((ipRateLimit.resetAt - Date.now()) / 1000);
-      return NextResponse.json(
+      return withCors(NextResponse.json(
         { error: "rate_limited" },
         { status: 429, headers: { "Retry-After": String(retryAfter) } },
-      );
+      ));
     }
   }
 
@@ -62,7 +65,7 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const parseResult = loginSchema.safeParse(body);
   if (!parseResult.success) {
-    return NextResponse.json({ error: "missing" }, { status: 400 });
+    return withCors(NextResponse.json({ error: "missing" }, { status: 400 }));
   }
 
   const { email, password } = parseResult.data;
@@ -77,10 +80,10 @@ export async function POST(req: Request) {
       metadata: { reason: "email_rate_limited", email },
     });
     const retryAfter = Math.ceil((emailRateLimit.resetAt - Date.now()) / 1000);
-    return NextResponse.json(
+    return withCors(NextResponse.json(
       { error: "rate_limited" },
       { status: 429, headers: { "Retry-After": String(retryAfter) } },
-    );
+    ));
   }
 
   // Fetch user
@@ -102,7 +105,7 @@ export async function POST(req: Request) {
       "[Extension Login] Database error:",
       error instanceof Error ? error.message : "unknown",
     );
-    return NextResponse.json({ error: "db" }, { status: 500 });
+    return withCors(NextResponse.json({ error: "db" }, { status: 500 }));
   }
 
   if (!user?.master_password_hash) {
@@ -114,7 +117,7 @@ export async function POST(req: Request) {
       userAgent,
       metadata: { reason: "user_not_found", email },
     });
-    return NextResponse.json({ error: "invalid" }, { status: 401 });
+    return withCors(NextResponse.json({ error: "invalid" }, { status: 401 }));
   }
 
   // Check lockout
@@ -131,7 +134,7 @@ export async function POST(req: Request) {
         lockedUntil: lockoutStatus.lockedUntil?.toISOString(),
       },
     });
-    return NextResponse.json({ error: "locked" }, { status: 423 });
+    return withCors(NextResponse.json({ error: "locked" }, { status: 423 }));
   }
 
   // Hash and verify
@@ -153,9 +156,9 @@ export async function POST(req: Request) {
       },
     });
     if (newLockoutStatus.locked) {
-      return NextResponse.json({ error: "locked" }, { status: 423 });
+      return withCors(NextResponse.json({ error: "locked" }, { status: 423 }));
     }
-    return NextResponse.json({ error: "invalid" }, { status: 401 });
+    return withCors(NextResponse.json({ error: "invalid" }, { status: 401 }));
   }
 
   // Must be verified
@@ -167,7 +170,7 @@ export async function POST(req: Request) {
       userAgent,
       metadata: { reason: "unverified", email },
     });
-    return NextResponse.json({ error: "unverified" }, { status: 403 });
+    return withCors(NextResponse.json({ error: "unverified" }, { status: 403 }));
   }
 
   // Clear failed logins + rate limits
@@ -186,7 +189,7 @@ export async function POST(req: Request) {
       userAgent,
       metadata: { reason: "missing_encryption_key", email },
     });
-    return NextResponse.json({ error: "invalid" }, { status: 500 });
+    return withCors(NextResponse.json({ error: "invalid" }, { status: 500 }));
   }
 
   // Sign JWT (no session ID needed -- extension decrypts locally)
@@ -204,10 +207,10 @@ export async function POST(req: Request) {
   });
 
   // Return token + encrypted encryption key + master key hash
-  return NextResponse.json({
+  return withCors(NextResponse.json({
     token,
     encryptedEncryptionKey: user.encryption_key,
     masterKeyHash: masterKey,
     email,
-  });
+  }));
 }

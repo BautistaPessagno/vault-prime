@@ -3,6 +3,9 @@ import { desc, eq } from "drizzle-orm";
 import { verifySessionToken } from "@/src/lib/auth/jwt";
 import { db } from "@/src/db";
 import { entriesTable } from "@/src/db/schema";
+import { OPTIONS, withCors } from "../cors";
+
+export { OPTIONS };
 
 function getBearerToken(req: Request): string | null {
   const auth = req.headers.get("authorization");
@@ -13,7 +16,7 @@ function getBearerToken(req: Request): string | null {
 export async function GET(req: Request) {
   const token = getBearerToken(req);
   if (!token) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return withCors(NextResponse.json({ error: "unauthorized" }, { status: 401 }));
   }
 
   let userId: string;
@@ -21,11 +24,11 @@ export async function GET(req: Request) {
     const payload = await verifySessionToken(token);
     const sub = payload.sub != null ? String(payload.sub) : null;
     if (!sub) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+      return withCors(NextResponse.json({ error: "unauthorized" }, { status: 401 }));
     }
     userId = sub;
   } catch {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return withCors(NextResponse.json({ error: "unauthorized" }, { status: 401 }));
   }
 
   try {
@@ -44,12 +47,12 @@ export async function GET(req: Request) {
       .where(eq(entriesTable.user_id, userId))
       .orderBy(desc(entriesTable.last_edited), desc(entriesTable.id));
 
-    return NextResponse.json({ entries });
+    return withCors(NextResponse.json({ entries }));
   } catch (error) {
     console.error(
       "[Extension Entries] Database error:",
       error instanceof Error ? error.message : "unknown",
     );
-    return NextResponse.json({ error: "db" }, { status: 500 });
+    return withCors(NextResponse.json({ error: "db" }, { status: 500 }));
   }
 }

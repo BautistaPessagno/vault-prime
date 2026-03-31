@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "Claude Code Guide": {
+      "source": "davila7/claude-code-templates",
+      "sourceType": "github",
+      "computedHash": "5473e010b963d5d27b4e8e9702b1bfceb442a14223fba31b8d26f80f9664b0b4"
+    }
+  }
+}
