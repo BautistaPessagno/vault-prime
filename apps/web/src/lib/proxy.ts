@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomBytes, bytesToHex } from "@noble/hashes/utils.js";
 import { verifySessionToken } from "@/src/lib/auth/jwt";
 
 /**
@@ -59,9 +60,18 @@ export async function proxyHandler(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  // Dev keeps 'unsafe-inline' because HMR / React Refresh inject inline
+  // scripts without nonces. Production uses a per-request nonce +
+  // 'strict-dynamic' so any XSS payload cannot execute inline scripts.
+  const isProd = process.env.NODE_ENV === "production";
+  const nonce = isProd ? bytesToHex(randomBytes(16)) : "";
+  const scriptSrc = isProd
+    ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`
+    : `script-src 'self' 'unsafe-inline' 'unsafe-eval'`;
+
   const csp = [
     `default-src 'self'`,
-    `script-src 'self' 'unsafe-inline'`,
+    scriptSrc,
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: blob:`,
     `font-src 'self'`,
@@ -71,7 +81,15 @@ export async function proxyHandler(request: NextRequest) {
     `form-action 'self'`,
   ].join("; ");
 
-  const response = NextResponse.next();
+  const requestHeaders = new Headers(request.headers);
+  if (nonce) {
+    requestHeaders.set("x-nonce", nonce);
+  }
+  // Next.js reads this request header to auto-propagate the nonce onto its
+  // own injected scripts (__NEXT_DATA__, chunks, etc).
+  requestHeaders.set("content-security-policy", csp);
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("Content-Security-Policy", csp);
 
   return response;

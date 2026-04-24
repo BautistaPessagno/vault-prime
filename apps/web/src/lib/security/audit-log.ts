@@ -18,7 +18,8 @@ export type AuditEventType =
   | "entry_deleted"
   | "entry_copied"
   | "extension_login_success"
-  | "extension_login_failed";
+  | "extension_login_failed"
+  | "extension_entries_read";
 
 interface AuditEventParams {
   userId?: string | null;

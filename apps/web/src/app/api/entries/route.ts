@@ -19,28 +19,39 @@ const ENTRY_WRITE_RATE_LIMIT = {
   keyPrefix: "ratelimit:entries:write:",
 };
 
+function noStore<T extends NextResponse>(res: T): T {
+  res.headers.set(
+    "Cache-Control",
+    "no-store, no-cache, must-revalidate, private, max-age=0",
+  );
+  res.headers.set("Pragma", "no-cache");
+  return res;
+}
+
 export async function GET() {
   const session = await getSessionData();
   if (!session) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return noStore(NextResponse.json({ error: "unauthorized" }, { status: 401 }));
   }
 
   const { userId, encryptionKey } = session;
   if (!userId) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return noStore(NextResponse.json({ error: "unauthorized" }, { status: 401 }));
   }
 
   const verification = await getUserVerificationStatus(userId);
   if (verification.status === "error") {
-    return NextResponse.json({ error: "db" }, { status: 500 });
+    return noStore(NextResponse.json({ error: "db" }, { status: 500 }));
   }
   if (verification.status === "missing") {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return noStore(NextResponse.json({ error: "unauthorized" }, { status: 401 }));
   }
   if (verification.status === "unverified") {
-    return NextResponse.json(
-      { error: "unverified", email: verification.email },
-      { status: 403 },
+    return noStore(
+      NextResponse.json(
+        { error: "unverified", email: verification.email },
+        { status: 403 },
+      ),
     );
   }
   const userIdForQuery = userId;
@@ -64,7 +75,7 @@ export async function GET() {
       .orderBy(desc(entriesTable.last_edited), desc(entriesTable.id));
   } catch (error) {
     console.error("[Entries] Database error:", error instanceof Error ? error.message : "unknown");
-    return NextResponse.json({ error: "db" }, { status: 500 });
+    return noStore(NextResponse.json({ error: "db" }, { status: 500 }));
   }
 
   try {
@@ -75,34 +86,36 @@ export async function GET() {
       })),
     );
 
-    return NextResponse.json({ entries });
+    return noStore(NextResponse.json({ entries }));
   } catch {
-    return NextResponse.json({ error: "decrypt" }, { status: 400 });
+    return noStore(NextResponse.json({ error: "decrypt" }, { status: 400 }));
   }
 }
 
 export async function POST(req: Request) {
   const session = await getSessionData();
   if (!session) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return noStore(NextResponse.json({ error: "unauthorized" }, { status: 401 }));
   }
 
   const { userId, encryptionKey } = session;
   if (!userId) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return noStore(NextResponse.json({ error: "unauthorized" }, { status: 401 }));
   }
 
   const verification = await getUserVerificationStatus(userId);
   if (verification.status === "error") {
-    return NextResponse.json({ error: "db" }, { status: 500 });
+    return noStore(NextResponse.json({ error: "db" }, { status: 500 }));
   }
   if (verification.status === "missing") {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return noStore(NextResponse.json({ error: "unauthorized" }, { status: 401 }));
   }
   if (verification.status === "unverified") {
-    return NextResponse.json(
-      { error: "unverified", email: verification.email },
-      { status: 403 },
+    return noStore(
+      NextResponse.json(
+        { error: "unverified", email: verification.email },
+        { status: 403 },
+      ),
     );
   }
   const userIdForQuery = userId;
@@ -110,14 +123,19 @@ export async function POST(req: Request) {
   // Rate limit entry writes per user
   const rateLimit = await checkRateLimit(userId, ENTRY_WRITE_RATE_LIMIT);
   if (!rateLimit.allowed) {
-    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+    return noStore(NextResponse.json({ error: "rate_limited" }, { status: 429 }));
   }
 
   const body = await req.json().catch(() => null);
 
   const parseResult = entrySchema.safeParse(body);
   if (!parseResult.success) {
-    return NextResponse.json({ error: "validation", errors: parseResult.error.flatten().fieldErrors }, { status: 400 });
+    return noStore(
+      NextResponse.json(
+        { error: "validation", errors: parseResult.error.flatten().fieldErrors },
+        { status: 400 },
+      ),
+    );
   }
   const { name, username, password, url } = parseResult.data;
 
@@ -126,22 +144,13 @@ export async function POST(req: Request) {
     encryptionKey,
   );
 
-  const now = new Date().toISOString();
-  const lastEdited =
-    typeof body?.last_edited === "string" ? body.last_edited : now;
-  const lastCopied =
-    typeof body?.last_copied === "string" ? body.last_copied : undefined;
-
   let entryRow: EntryRow | null = null;
   try {
     const values: InsertEntry = {
       user_id: userIdForQuery,
-      last_edited: lastEdited,
+      last_edited: new Date().toISOString(),
       ...encryptedFields,
     };
-    if (lastCopied !== undefined) {
-      values.last_copied = lastCopied;
-    }
 
     const inserted = await db.insert(entriesTable).values(values).returning({
       id: entriesTable.id,
@@ -157,11 +166,11 @@ export async function POST(req: Request) {
     entryRow = inserted[0] ?? null;
   } catch (error) {
     console.error("[Entries POST] Database error:", error instanceof Error ? error.message : "unknown");
-    return NextResponse.json({ error: "db" }, { status: 500 });
+    return noStore(NextResponse.json({ error: "db" }, { status: 500 }));
   }
 
   if (!entryRow) {
-    return NextResponse.json({ error: "db" }, { status: 500 });
+    return noStore(NextResponse.json({ error: "db" }, { status: 500 }));
   }
 
   await logAuditEvent({
@@ -177,9 +186,9 @@ export async function POST(req: Request) {
       ...entryRow,
       ...(await decryptEntryFields(entryRow, encryptionKey)),
     };
-    return NextResponse.json({ entry }, { status: 201 });
+    return noStore(NextResponse.json({ entry }, { status: 201 }));
   } catch (decryptError) {
     console.error("[Entries POST] Decrypt error:", decryptError instanceof Error ? decryptError.message : "unknown");
-    return NextResponse.json({ error: "decrypt" }, { status: 400 });
+    return noStore(NextResponse.json({ error: "decrypt" }, { status: 400 }));
   }
 }

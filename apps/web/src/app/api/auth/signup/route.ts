@@ -211,7 +211,7 @@ export async function POST(req: Request) {
     return withError(req, "insert", 500);
   }
 
-  const sessionId = generateSessionId();
+  const sessionId = generateSessionId(createdUserId);
   const keyCache = getKeyCache();
   await keyCache.set(sessionId, encryptionKey, CACHE_CONFIG.ttlSeconds);
 

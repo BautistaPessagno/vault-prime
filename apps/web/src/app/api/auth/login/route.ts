@@ -228,10 +228,9 @@ export async function POST(req: Request) {
   // Clear failed login attempts on successful login
   await clearFailedLogins(user.id);
 
-  // Reset rate limits on successful login
-  if (ipAddress) {
-    await resetRateLimit(ipAddress, IP_RATE_LIMIT.keyPrefix);
-  }
+  // Reset per-email rate limit on success; keep per-IP counter intact so
+  // shared-IP tenants (office NAT / CGNAT) can't get their window cleared by
+  // a co-tenant's successful login.
   await resetRateLimit(email, EMAIL_RATE_LIMIT.keyPrefix);
 
   // Check for missing encryption key (data integrity issue)
@@ -254,7 +253,7 @@ export async function POST(req: Request) {
   );
 
   // Store encryption key in cache
-  const sessionId = generateSessionId();
+  const sessionId = generateSessionId(String(user.id));
   const keyCache = getKeyCache();
   await keyCache.set(sessionId, encryptionKey, CACHE_CONFIG.ttlSeconds);
 

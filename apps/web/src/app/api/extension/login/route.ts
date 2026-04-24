@@ -170,11 +170,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "unverified" }, { status: 403 });
   }
 
-  // Clear failed logins + rate limits
+  // Clear failed logins + per-email rate limit (keep per-IP counter).
   await clearFailedLogins(user.id);
-  if (ipAddress) {
-    await resetRateLimit(ipAddress, IP_RATE_LIMIT.keyPrefix);
-  }
   await resetRateLimit(email, EMAIL_RATE_LIMIT.keyPrefix);
 
   // Check encryption key exists

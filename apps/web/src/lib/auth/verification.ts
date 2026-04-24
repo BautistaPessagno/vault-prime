@@ -4,7 +4,17 @@ import { randomBytes, bytesToHex } from "@noble/hashes/utils.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { emailVerificationCodesTable } from "@/src/db/schema";
 import { db } from "@/src/db";
-import { eq, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
+import { timingSafeEqual } from "node:crypto";
+
+function constantTimeHexEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  try {
+    return timingSafeEqual(Buffer.from(a, "hex"), Buffer.from(b, "hex"));
+  } catch {
+    return false;
+  }
+}
 
 const MAX_VERIFICATION_ATTEMPTS = 3;
 
@@ -65,7 +75,7 @@ export async function verifyCode(
       })
       .from(emailVerificationCodesTable)
       .where(eq(emailVerificationCodesTable.user_id, userId))
-      .orderBy(emailVerificationCodesTable.created_at)
+      .orderBy(desc(emailVerificationCodesTable.created_at))
       .limit(1);
 
     const row = rows[0];
@@ -89,13 +99,14 @@ export async function verifyCode(
       .set({ attempts: sql`${emailVerificationCodesTable.attempts} + 1` })
       .where(eq(emailVerificationCodesTable.id, row.id));
 
+    const matches = constantTimeHexEqual(row.code_hash, codeHash);
+
     // Check if max attempts reached after increment
-    if (row.attempts + 1 >= MAX_VERIFICATION_ATTEMPTS && row.code_hash !== codeHash) {
+    if (row.attempts + 1 >= MAX_VERIFICATION_ATTEMPTS && !matches) {
       return { valid: false, error: "max_attempts" };
     }
 
-    // Verify code hash
-    if (row.code_hash !== codeHash) {
+    if (!matches) {
       return { valid: false, error: "invalid" };
     }
 
