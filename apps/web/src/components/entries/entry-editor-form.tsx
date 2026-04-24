@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import type { ZXCVBNResult } from "zxcvbn";
 import type { EntryDraft } from "@/src/types/entries";
 import PasswordStrengthMeter from "@/src/components/password-strength-meter";
+import FloatingField from "@/src/components/ui/floating-field";
+import SiteIcon from "@/src/components/entries/site-icon";
 
 type EntryEditorFormProps = {
   draft: EntryDraft;
@@ -14,6 +16,99 @@ type EntryEditorFormProps = {
   onSubmit: (event: React.FormEvent) => void;
 };
 
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="mb-2 text-sm font-semibold text-[color:var(--foreground)]">
+      {children}
+    </h3>
+  );
+}
+
+function SectionCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-4 md:p-5">
+      {children}
+    </div>
+  );
+}
+
+function IconButton({
+  onClick,
+  title,
+  children,
+  type = "button",
+}: {
+  onClick?: () => void;
+  title: string;
+  children: React.ReactNode;
+  type?: "button" | "submit";
+}) {
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      className="rounded-full p-1.5 text-[color:var(--muted-foreground)] transition hover:bg-[color:var(--muted)] hover:text-[color:var(--foreground)]"
+    >
+      {children}
+    </button>
+  );
+}
+
+function EyeIcon({ open }: { open: boolean }) {
+  return open ? (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+      <line x1="1" y1="1" x2="23" y2="23"></line>
+    </svg>
+  ) : (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+      <circle cx="12" cy="12" r="3"></circle>
+    </svg>
+  );
+}
+
+function RegenerateIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21 12a9 9 0 1 1-3-6.7" />
+      <polyline points="21 4 21 10 15 10" />
+    </svg>
+  );
+}
+
 export default function EntryEditorForm({
   draft,
   isCreating,
@@ -23,11 +118,16 @@ export default function EntryEditorForm({
   onSubmit,
 }: EntryEditorFormProps) {
   const [passwordStrength, setPasswordStrength] = useState<ZXCVBNResult | null>(
-    null
+    null,
   );
+  const [showPassword, setShowPassword] = useState(false);
 
-  const nameError = draft.name.length > 255 ? "Name is too long (max 255 characters)." : "";
-  const usernameError = draft.username.length > 255 ? "Username is too long (max 255 characters)." : "";
+  const nameError =
+    draft.name.length > 255 ? "Name is too long (max 255 characters)." : "";
+  const usernameError =
+    draft.username.length > 255
+      ? "Username is too long (max 255 characters)."
+      : "";
 
   const urlValue = draft.url.trim();
   let urlError = "";
@@ -46,18 +146,13 @@ export default function EntryEditorForm({
     }
   }
 
-  // Check password strength as user types
   useEffect(() => {
     if (!draft.password) {
       setPasswordStrength(null);
       return;
     }
-
-    // Dynamic import to avoid SSR issues
     import("zxcvbn").then((zxcvbn) => {
-      const userInputs = [draft.name, draft.username, draft.url].filter(
-        Boolean
-      );
+      const userInputs = [draft.name, draft.username, draft.url].filter(Boolean);
       const result = zxcvbn.default(draft.password, userInputs);
       setPasswordStrength(result);
     });
@@ -65,7 +160,8 @@ export default function EntryEditorForm({
 
   return (
     <div>
-      <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div className="mb-6 flex items-center gap-4">
+        <SiteIcon url={urlValue && !urlError ? urlValue : null} name={draft.name || "?"} size={48} />
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
             Editor
@@ -73,92 +169,102 @@ export default function EntryEditorForm({
           <h2 className="text-2xl font-semibold">
             {isCreating ? "New Entry" : "Edit Entry"}
           </h2>
-          <p className="text-sm text-[color:var(--muted-foreground)]">
-            Save credentials clearly.
-          </p>
         </div>
       </div>
-      <form onSubmit={onSubmit} className="space-y-5">
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
-              Name
-            </label>
-            <input
+
+      <form onSubmit={onSubmit} className="space-y-6">
+        <section>
+          <SectionHeader>Item details</SectionHeader>
+          <SectionCard>
+            <FloatingField
+              label={
+                <>
+                  Item name{" "}
+                  <span className="text-[color:var(--muted-foreground)]/70">
+                    (required)
+                  </span>
+                </>
+              }
               type="text"
               value={draft.name}
               onChange={(e) =>
                 onDraftChange({ ...draft, name: e.target.value })
               }
-              className={`w-full rounded-xl border bg-transparent px-4 py-3 text-sm outline-none transition ${nameError ? "border-red-400 focus:border-red-400" : "border-[color:var(--border)] focus:border-[color:var(--accent)]"}`}
               placeholder="Site name"
+              error={nameError}
+              autoComplete="off"
             />
-            {nameError && (
-              <p className="text-xs text-red-400">{nameError}</p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
-              Link
-            </label>
-            <input
-              type="text"
-              value={draft.url}
-              onChange={(e) => onDraftChange({ ...draft, url: e.target.value })}
-              className={`w-full rounded-xl border bg-transparent px-4 py-3 text-sm outline-none transition ${urlError ? "border-red-400 focus:border-red-400" : "border-[color:var(--border)] focus:border-[color:var(--accent)]"}`}
-              placeholder="https://example.com"
-            />
-            {urlError && (
-              <p className="text-xs text-red-400">{urlError}</p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
-              Username
-            </label>
-            <input
-              type="text"
-              value={draft.username}
-              onChange={(e) =>
-                onDraftChange({ ...draft, username: e.target.value })
-              }
-              className={`w-full rounded-xl border bg-transparent px-4 py-3 text-sm outline-none transition ${usernameError ? "border-red-400 focus:border-red-400" : "border-[color:var(--border)] focus:border-[color:var(--accent)]"}`}
-              placeholder="user@email.com"
-            />
-            {usernameError && (
-              <p className="text-xs text-red-400">{usernameError}</p>
-            )}
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <label className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted-foreground)]">
-              Password
-            </label>
-            <div className="relative">
-              <input
+          </SectionCard>
+        </section>
+
+        <section>
+          <SectionHeader>Login credentials</SectionHeader>
+          <SectionCard>
+            <div className="space-y-3">
+              <FloatingField
+                label="Username"
                 type="text"
+                value={draft.username}
+                onChange={(e) =>
+                  onDraftChange({ ...draft, username: e.target.value })
+                }
+                placeholder="user@email.com"
+                error={usernameError}
+                autoComplete="off"
+              />
+              <FloatingField
+                label="Password"
+                type={showPassword ? "text" : "password"}
                 value={draft.password}
                 onChange={(e) =>
                   onDraftChange({ ...draft, password: e.target.value })
                 }
-                className="w-full rounded-xl border border-[color:var(--border)] bg-transparent px-4 py-3 pr-24 text-sm outline-none transition focus:border-[color:var(--accent)]"
+                autoComplete="new-password"
+                hint="Use the generator to create a strong unique password"
+                rightSlot={
+                  <>
+                    <IconButton
+                      onClick={() => setShowPassword((v) => !v)}
+                      title={showPassword ? "Hide password" : "Show password"}
+                    >
+                      <EyeIcon open={showPassword} />
+                    </IconButton>
+                    <IconButton
+                      onClick={onGeneratePassword}
+                      title="Generate password"
+                    >
+                      <RegenerateIcon />
+                    </IconButton>
+                  </>
+                }
               />
-              <button
-                type="button"
-                onClick={onGeneratePassword}
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full border border-[color:var(--border)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted-foreground)] transition hover:border-[color:var(--accent)]"
-              >
-                Generate
-              </button>
+              {draft.password && passwordStrength && (
+                <PasswordStrengthMeter
+                  strength={passwordStrength}
+                  password={draft.password}
+                  showRequirements={false}
+                />
+              )}
             </div>
-            {draft.password && passwordStrength && (
-              <PasswordStrengthMeter
-                strength={passwordStrength}
-                password={draft.password}
-                showRequirements={false}
-              />
-            )}
-          </div>
-        </div>
+          </SectionCard>
+        </section>
+
+        <section>
+          <SectionHeader>Website</SectionHeader>
+          <SectionCard>
+            <FloatingField
+              label="Website (URL)"
+              type="text"
+              value={draft.url}
+              onChange={(e) => onDraftChange({ ...draft, url: e.target.value })}
+              placeholder="https://example.com"
+              error={urlError}
+              autoComplete="off"
+              inputMode="url"
+            />
+          </SectionCard>
+        </section>
+
         <div className="flex flex-wrap justify-end gap-3">
           <button
             type="button"
