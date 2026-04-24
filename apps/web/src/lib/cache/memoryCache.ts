@@ -63,6 +63,17 @@ export const memoryCache: KeyCache = {
     cache.delete(sessionId);
   },
 
+  async deleteByPrefix(prefix: string): Promise<number> {
+    let removed = 0;
+    for (const key of cache.keys()) {
+      if (key.startsWith(prefix)) {
+        cache.delete(key);
+        removed++;
+      }
+    }
+    return removed;
+  },
+
   async refresh(sessionId: string, ttlSeconds: number): Promise<boolean> {
     const entry = cache.get(sessionId);
     if (!entry || entry.expiresAt <= Date.now()) {

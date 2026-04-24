@@ -1,6 +1,17 @@
 import type { EncryptedEntry } from "./types";
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+const rawApiUrl = import.meta.env.VITE_API_URL;
+if (!rawApiUrl) {
+  throw new Error(
+    "VITE_API_URL is required. Set it (e.g. https://vault-prime.com) before building the extension.",
+  );
+}
+if (import.meta.env.PROD && !rawApiUrl.startsWith("https://")) {
+  throw new Error(
+    "VITE_API_URL must use https:// in production builds. Got: " + rawApiUrl,
+  );
+}
+const API_BASE: string = rawApiUrl;
 
 type LoginApiResponse = {
   token: string;

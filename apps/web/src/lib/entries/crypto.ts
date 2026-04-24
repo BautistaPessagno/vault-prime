@@ -34,7 +34,6 @@ export async function getSessionData(): Promise<SessionData> {
   const cookieStore = await cookies();
   const token = cookieStore.get("session")?.value;
   if (!token) {
-    console.log("[Auth] No session cookie found");
     return null;
   }
   try {
@@ -44,13 +43,7 @@ export async function getSessionData(): Promise<SessionData> {
     const userId = payload.sub != null ? String(payload.sub) : null;
     const sessionId = typeof payload.sid === "string" ? payload.sid : null;
 
-    if (!userId) {
-      console.log("[Auth] Missing userId in session");
-      return null;
-    }
-
-    if (!sessionId) {
-      console.log("[Auth] Session missing session ID - requires re-login");
+    if (!userId || !sessionId) {
       return null;
     }
 
@@ -59,7 +52,6 @@ export async function getSessionData(): Promise<SessionData> {
     const encryptionKey = await keyCache.get(sessionId);
 
     if (!encryptionKey) {
-      console.log("[Auth] Session key expired - requires re-login");
       return null;
     }
 

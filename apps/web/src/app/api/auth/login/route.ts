@@ -228,7 +228,12 @@ export async function POST(req: Request) {
   // Clear failed login attempts on successful login
   await clearFailedLogins(user.id);
 
-  // Reset rate limits on successful login
+  // Reset both rate limits on success. checkRateLimit increments on every
+  // call regardless of outcome, so without resetting on success the per-IP
+  // bucket would accumulate legitimate logins and lock out the 11th user on
+  // any shared egress (office NAT / CGNAT / VPN). Single-account brute force
+  // is bounded by EMAIL_RATE_LIMIT and per-account lockout; cross-account
+  // enumeration shows up as failures and still consumes the IP bucket.
   if (ipAddress) {
     await resetRateLimit(ipAddress, IP_RATE_LIMIT.keyPrefix);
   }
@@ -254,7 +259,7 @@ export async function POST(req: Request) {
   );
 
   // Store encryption key in cache
-  const sessionId = generateSessionId();
+  const sessionId = generateSessionId(String(user.id));
   const keyCache = getKeyCache();
   await keyCache.set(sessionId, encryptionKey, CACHE_CONFIG.ttlSeconds);
 

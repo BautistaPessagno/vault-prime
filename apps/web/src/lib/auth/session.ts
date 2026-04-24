@@ -1,9 +1,9 @@
 import { randomBytes, bytesToHex } from "@noble/hashes/utils.js";
 
 /**
- * Generate a cryptographically secure session ID
- * 32 bytes = 256 bits of entropy, hex-encoded to 64 chars
+ * Prefixed with userId so we can invalidate every session for a given user
+ * (password change, future account-wide revoke) via cache.deleteByPrefix.
  */
-export function generateSessionId(): string {
-  return bytesToHex(randomBytes(32));
+export function generateSessionId(userId: string): string {
+  return `${userId}:${bytesToHex(randomBytes(32))}`;
 }

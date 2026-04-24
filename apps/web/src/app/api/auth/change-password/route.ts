@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { cookies } from "next/headers";
 import {
   hash,
   verify,
@@ -11,11 +10,15 @@ import {
   getSessionData,
   encryptValue,
 } from "@/src/lib/entries/crypto";
-import { verifySessionToken } from "@/src/lib/auth/jwt";
 import { getKeyCache } from "@/src/lib/cache";
 import { db } from "@/src/db";
 import { usersTable } from "@/src/db/schema";
 import { checkRateLimit } from "@/src/lib/security/rate-limit";
+import {
+  logAuditEvent,
+  getClientIp,
+  getUserAgent,
+} from "@/src/lib/security/audit-log";
 
 const CHANGE_PASSWORD_RATE_LIMIT = {
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -43,6 +46,9 @@ async function readBody(request: Request): Promise<ChangePasswordBody | null> {
 }
 
 export async function POST(req: Request) {
+  const ipAddress = getClientIp(req);
+  const userAgent = getUserAgent(req);
+
   // 1. Leer credenciales
   const body = await readBody(req);
   if (!body) {
@@ -88,6 +94,13 @@ export async function POST(req: Request) {
   const currentMasterKey = await hash(currentPassword, salt);
   const valid = await verify(currentMasterKey, user.master_password_hash);
   if (!valid) {
+    await logAuditEvent({
+      userId: session.userId,
+      eventType: "login_failed",
+      ipAddress,
+      userAgent,
+      metadata: { reason: "change_password_invalid" },
+    });
     return NextResponse.json({ error: "invalid_password" }, { status: 401 });
   }
 
@@ -117,21 +130,26 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "db" }, { status: 500 });
   }
 
-  // 8. Invalidar sesión actual
+  // 8. Invalidar todas las sesiones activas del usuario — web y extensión.
+  // Los sessionIds están prefijados con `${userId}:`; deleteByPrefix borra
+  // todas las entradas de caché de ese usuario. Las siguientes requests
+  // fallarán el liveness-check en getSessionData (web) y en
+  // /api/extension/entries (extensión) hasta que el usuario reinicie sesión.
+  // Nota: el DEK no se rota, sólo se re-envuelve con la nueva stretched key.
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
-    if (token) {
-      const payload = await verifySessionToken(token);
-      if (typeof payload.sid === "string") {
-        const keyCache = getKeyCache();
-        await keyCache.delete(payload.sid);
-      }
-    }
+    const keyCache = getKeyCache();
+    await keyCache.deleteByPrefix(`${session.userId}:`);
   } catch (error) {
     console.error("[Auth ChangePassword] Cache cleanup error:", error instanceof Error ? error.message : "unknown");
     // No fallar si no podemos limpiar el cache
   }
+
+  await logAuditEvent({
+    userId: session.userId,
+    eventType: "password_changed",
+    ipAddress,
+    userAgent,
+  });
 
   // 9. Borrar cookie y retornar éxito
   const response = NextResponse.json({ ok: true });

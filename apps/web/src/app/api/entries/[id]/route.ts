@@ -19,6 +19,15 @@ const ENTRY_WRITE_RATE_LIMIT = {
   keyPrefix: "ratelimit:entries:write:",
 };
 
+function noStore<T extends NextResponse>(res: T): T {
+  res.headers.set(
+    "Cache-Control",
+    "no-store, no-cache, must-revalidate, private, max-age=0",
+  );
+  res.headers.set("Pragma", "no-cache");
+  return res;
+}
+
 type RouteContext = {
   params: Promise<{
     id: string;
@@ -29,44 +38,51 @@ export async function PUT(req: Request, context: RouteContext) {
   const { id } = await context.params;
   const session = await getSessionData();
   if (!session) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return noStore(NextResponse.json({ error: "unauthorized" }, { status: 401 }));
   }
 
   const { userId, encryptionKey } = session;
   if (!userId) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return noStore(NextResponse.json({ error: "unauthorized" }, { status: 401 }));
   }
 
   const verification = await getUserVerificationStatus(userId);
   if (verification.status === "error") {
-    return NextResponse.json({ error: "db" }, { status: 500 });
+    return noStore(NextResponse.json({ error: "db" }, { status: 500 }));
   }
   if (verification.status === "missing") {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return noStore(NextResponse.json({ error: "unauthorized" }, { status: 401 }));
   }
   if (verification.status === "unverified") {
-    return NextResponse.json(
-      { error: "unverified", email: verification.email },
-      { status: 403 },
+    return noStore(
+      NextResponse.json(
+        { error: "unverified", email: verification.email },
+        { status: 403 },
+      ),
     );
   }
   const userIdForQuery = userId;
   const entryId = id;
   if (!entryId) {
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
+    return noStore(NextResponse.json({ error: "not_found" }, { status: 404 }));
   }
 
   // Rate limit entry writes per user
   const rateLimit = await checkRateLimit(userId, ENTRY_WRITE_RATE_LIMIT);
   if (!rateLimit.allowed) {
-    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+    return noStore(NextResponse.json({ error: "rate_limited" }, { status: 429 }));
   }
 
   const body = await req.json().catch(() => null);
 
   const parseResult = entrySchema.safeParse(body);
   if (!parseResult.success) {
-    return NextResponse.json({ error: "validation", errors: parseResult.error.flatten().fieldErrors }, { status: 400 });
+    return noStore(
+      NextResponse.json(
+        { error: "validation", errors: parseResult.error.flatten().fieldErrors },
+        { status: 400 },
+      ),
+    );
   }
   const { name, username, password, url } = parseResult.data;
 
@@ -75,15 +91,10 @@ export async function PUT(req: Request, context: RouteContext) {
     encryptionKey,
   );
 
-  const updates: Partial<InsertEntry> = { ...encryptedFields };
-
-  if (typeof body?.last_edited === "string") {
-    updates.last_edited = body.last_edited;
-  }
-
-  if (typeof body?.last_copied === "string") {
-    updates.last_copied = body.last_copied;
-  }
+  const updates: Partial<InsertEntry> = {
+    ...encryptedFields,
+    last_edited: new Date().toISOString(),
+  };
 
   let entryRow: EntryRow | null = null;
   try {
@@ -110,11 +121,11 @@ export async function PUT(req: Request, context: RouteContext) {
     entryRow = updated[0] ?? null;
   } catch (error) {
     console.error("[Entries PUT] Database error:", error instanceof Error ? error.message : "unknown");
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
+    return noStore(NextResponse.json({ error: "not_found" }, { status: 404 }));
   }
 
   if (!entryRow) {
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
+    return noStore(NextResponse.json({ error: "not_found" }, { status: 404 }));
   }
 
   await logAuditEvent({
@@ -130,10 +141,10 @@ export async function PUT(req: Request, context: RouteContext) {
       ...entryRow,
       ...(await decryptEntryFields(entryRow, encryptionKey)),
     };
-    return NextResponse.json({ entry });
+    return noStore(NextResponse.json({ entry }));
   } catch (decryptError) {
     console.error("[Entries PUT] Decrypt error:", decryptError instanceof Error ? decryptError.message : "unknown");
-    return NextResponse.json({ error: "decrypt" }, { status: 400 });
+    return noStore(NextResponse.json({ error: "decrypt" }, { status: 400 }));
   }
 }
 
@@ -142,37 +153,39 @@ export async function DELETE(req: Request, context: RouteContext) {
 
   const session = await getSessionData();
   if (!session) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return noStore(NextResponse.json({ error: "unauthorized" }, { status: 401 }));
   }
 
   const { userId } = session;
   if (!userId) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return noStore(NextResponse.json({ error: "unauthorized" }, { status: 401 }));
   }
 
   const verification = await getUserVerificationStatus(userId);
   if (verification.status === "error") {
-    return NextResponse.json({ error: "db" }, { status: 500 });
+    return noStore(NextResponse.json({ error: "db" }, { status: 500 }));
   }
   if (verification.status === "missing") {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return noStore(NextResponse.json({ error: "unauthorized" }, { status: 401 }));
   }
   if (verification.status === "unverified") {
-    return NextResponse.json(
-      { error: "unverified", email: verification.email },
-      { status: 403 },
+    return noStore(
+      NextResponse.json(
+        { error: "unverified", email: verification.email },
+        { status: 403 },
+      ),
     );
   }
   const userIdForQuery = userId;
   const entryId = id;
   if (!entryId) {
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
+    return noStore(NextResponse.json({ error: "not_found" }, { status: 404 }));
   }
 
   // Rate limit entry writes per user
   const deleteRateLimit = await checkRateLimit(userId, ENTRY_WRITE_RATE_LIMIT);
   if (!deleteRateLimit.allowed) {
-    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+    return noStore(NextResponse.json({ error: "rate_limited" }, { status: 429 }));
   }
 
   try {
@@ -186,7 +199,7 @@ export async function DELETE(req: Request, context: RouteContext) {
       );
   } catch (error) {
     console.error("[Entries DELETE] Database error:", error instanceof Error ? error.message : "unknown");
-    return NextResponse.json({ error: "db" }, { status: 500 });
+    return noStore(NextResponse.json({ error: "db" }, { status: 500 }));
   }
 
   await logAuditEvent({
@@ -197,5 +210,5 @@ export async function DELETE(req: Request, context: RouteContext) {
     metadata: { entryId },
   });
 
-  return NextResponse.json({ ok: true });
+  return noStore(NextResponse.json({ ok: true }));
 }

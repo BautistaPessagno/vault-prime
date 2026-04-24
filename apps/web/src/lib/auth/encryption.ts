@@ -11,6 +11,8 @@ export async function hash(password: string, salt?: Buffer) {
   return await argon2.hash(password, {
     type: argon2.argon2id,
     memoryCost: 65536, // 64 MiB
+    timeCost: 3,
+    parallelism: 4,
     ...(salt ? { salt } : null),
   });
 }
@@ -53,7 +55,7 @@ export async function generateEncryptionKey() {
 }
 
 export async function generateNonce() {
-  return bytesToHex(randomBytes(24));
+  return bytesToHex(randomBytes(12));
 }
 
 export async function encrypt(key: string, nonce: string, data: string) {

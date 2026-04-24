@@ -13,6 +13,15 @@ const ENTRY_WRITE_RATE_LIMIT = {
   keyPrefix: "ratelimit:entries:write:",
 };
 
+function noStore<T extends NextResponse>(res: T): T {
+  res.headers.set(
+    "Cache-Control",
+    "no-store, no-cache, must-revalidate, private, max-age=0",
+  );
+  res.headers.set("Pragma", "no-cache");
+  return res;
+}
+
 type RouteContext = {
   params: Promise<{
     id: string;
@@ -23,49 +32,45 @@ export async function POST(req: Request, context: RouteContext) {
   const { id } = await context.params;
   const session = await getSessionData();
   if (!session) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return noStore(NextResponse.json({ error: "unauthorized" }, { status: 401 }));
   }
 
   const { userId } = session;
   if (!userId) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return noStore(NextResponse.json({ error: "unauthorized" }, { status: 401 }));
   }
 
   const verification = await getUserVerificationStatus(userId);
   if (verification.status === "error") {
-    return NextResponse.json({ error: "db" }, { status: 500 });
+    return noStore(NextResponse.json({ error: "db" }, { status: 500 }));
   }
   if (verification.status === "missing") {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return noStore(NextResponse.json({ error: "unauthorized" }, { status: 401 }));
   }
   if (verification.status === "unverified") {
-    return NextResponse.json(
-      { error: "unverified", email: verification.email },
-      { status: 403 },
+    return noStore(
+      NextResponse.json(
+        { error: "unverified", email: verification.email },
+        { status: 403 },
+      ),
     );
   }
   const userIdForQuery = userId;
   const entryId = id;
   if (!entryId) {
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
+    return noStore(NextResponse.json({ error: "not_found" }, { status: 404 }));
   }
 
   // Rate limit entry writes per user
   const rateLimit = await checkRateLimit(userId, ENTRY_WRITE_RATE_LIMIT);
   if (!rateLimit.allowed) {
-    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+    return noStore(NextResponse.json({ error: "rate_limited" }, { status: 429 }));
   }
-
-  const body = await req.json().catch(() => null);
-  const lastCopied =
-    typeof body?.last_copied === "string"
-      ? body.last_copied
-      : new Date().toISOString();
 
   try {
     const updated = await db
       .update(entriesTable)
-      .set({ last_copied: lastCopied })
+      .set({ last_copied: new Date().toISOString() })
       .where(
         and(
           eq(entriesTable.id, entryId),
@@ -78,7 +83,7 @@ export async function POST(req: Request, context: RouteContext) {
       });
     const entry = updated[0];
     if (!entry) {
-      return NextResponse.json({ error: "not_found" }, { status: 404 });
+      return noStore(NextResponse.json({ error: "not_found" }, { status: 404 }));
     }
 
     await logAuditEvent({
@@ -89,9 +94,9 @@ export async function POST(req: Request, context: RouteContext) {
       metadata: { entryId },
     });
 
-    return NextResponse.json({ entry });
+    return noStore(NextResponse.json({ entry }));
   } catch (error) {
     console.error("[Entries Copied] Database error:", error instanceof Error ? error.message : "unknown");
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
+    return noStore(NextResponse.json({ error: "not_found" }, { status: 404 }));
   }
 }

@@ -80,7 +80,7 @@ This project implements a **zero-knowledge password vault** with multiple encryp
 
 4. **Entry Encryption** (`apps/web/src/lib/entries/crypto.ts`):
    - Each field (name, username, password, url) is encrypted separately
-   - Format: `{nonce}:{ciphertext}` where nonce is 24 random bytes
+   - Format: `{nonce}:{ciphertext}` where nonce is 12 random bytes (96-bit, AES-GCM standard per NIST SP 800-38D)
    - Fresh nonce generated per field for maximum security
 
 ### Rust Crypto Core (`packages/vault-crypto/`)
