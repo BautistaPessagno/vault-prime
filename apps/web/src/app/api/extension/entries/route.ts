@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { desc, eq } from "drizzle-orm";
 import { verifySessionToken } from "@/src/lib/auth/jwt";
+import { getKeyCache } from "@/src/lib/cache";
 import { db } from "@/src/db";
 import { entriesTable } from "@/src/db/schema";
 import { getUserVerificationStatus } from "@/src/lib/auth/verify-user";
@@ -39,14 +40,25 @@ export async function GET(req: Request) {
   }
 
   let userId: string;
+  let sessionId: string;
   try {
     const payload = await verifySessionToken(token);
     const sub = payload.sub != null ? String(payload.sub) : null;
-    if (!sub) {
+    const sid = typeof payload.sid === "string" ? payload.sid : null;
+    if (!sub || !sid) {
       return noStore(NextResponse.json({ error: "unauthorized" }, { status: 401 }));
     }
     userId = sub;
+    sessionId = sid;
   } catch {
+    return noStore(NextResponse.json({ error: "unauthorized" }, { status: 401 }));
+  }
+
+  // Liveness check against cache — lets password-change's deleteByPrefix
+  // revoke this token mid-TTL.
+  const keyCache = getKeyCache();
+  const alive = await keyCache.get(sessionId);
+  if (!alive) {
     return noStore(NextResponse.json({ error: "unauthorized" }, { status: 401 }));
   }
 

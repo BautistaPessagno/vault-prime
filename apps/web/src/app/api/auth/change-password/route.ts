@@ -94,6 +94,13 @@ export async function POST(req: Request) {
   const currentMasterKey = await hash(currentPassword, salt);
   const valid = await verify(currentMasterKey, user.master_password_hash);
   if (!valid) {
+    await logAuditEvent({
+      userId: session.userId,
+      eventType: "login_failed",
+      ipAddress,
+      userAgent,
+      metadata: { reason: "change_password_invalid" },
+    });
     return NextResponse.json({ error: "invalid_password" }, { status: 401 });
   }
 
@@ -123,9 +130,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "db" }, { status: 500 });
   }
 
-  // 8. Invalidar todas las sesiones activas del usuario (este navegador,
-  // extensión, otros dispositivos) borrando todas las entradas de caché
-  // que comienzan con el prefijo `${userId}:`.
+  // 8. Invalidar todas las sesiones activas del usuario — web y extensión.
+  // Los sessionIds están prefijados con `${userId}:`; deleteByPrefix borra
+  // todas las entradas de caché de ese usuario. Las siguientes requests
+  // fallarán el liveness-check en getSessionData (web) y en
+  // /api/extension/entries (extensión) hasta que el usuario reinicie sesión.
+  // Nota: el DEK no se rota, sólo se re-envuelve con la nueva stretched key.
   try {
     const keyCache = getKeyCache();
     await keyCache.deleteByPrefix(`${session.userId}:`);

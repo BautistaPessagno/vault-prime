@@ -228,9 +228,15 @@ export async function POST(req: Request) {
   // Clear failed login attempts on successful login
   await clearFailedLogins(user.id);
 
-  // Reset per-email rate limit on success; keep per-IP counter intact so
-  // shared-IP tenants (office NAT / CGNAT) can't get their window cleared by
-  // a co-tenant's successful login.
+  // Reset both rate limits on success. checkRateLimit increments on every
+  // call regardless of outcome, so without resetting on success the per-IP
+  // bucket would accumulate legitimate logins and lock out the 11th user on
+  // any shared egress (office NAT / CGNAT / VPN). Single-account brute force
+  // is bounded by EMAIL_RATE_LIMIT and per-account lockout; cross-account
+  // enumeration shows up as failures and still consumes the IP bucket.
+  if (ipAddress) {
+    await resetRateLimit(ipAddress, IP_RATE_LIMIT.keyPrefix);
+  }
   await resetRateLimit(email, EMAIL_RATE_LIMIT.keyPrefix);
 
   // Check for missing encryption key (data integrity issue)

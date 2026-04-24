@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { hash, verify } from "@/src/lib/auth/encryption";
 import { signSessionToken } from "@/src/lib/auth/jwt";
+import { generateSessionId } from "@/src/lib/auth/session";
+import { getKeyCache, CACHE_CONFIG } from "@/src/lib/cache";
 import { db } from "@/src/db";
 import { usersTable } from "@/src/db/schema";
 import { loginSchema } from "@/src/lib/validation/schemas";
@@ -170,8 +172,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "unverified" }, { status: 403 });
   }
 
-  // Clear failed logins + per-email rate limit (keep per-IP counter).
+  // Clear failed logins + both rate limits. See login/route.ts for why the
+  // per-IP bucket must reset on success (shared-egress availability).
   await clearFailedLogins(user.id);
+  if (ipAddress) {
+    await resetRateLimit(ipAddress, IP_RATE_LIMIT.keyPrefix);
+  }
   await resetRateLimit(email, EMAIL_RATE_LIMIT.keyPrefix);
 
   // Check encryption key exists
@@ -186,10 +192,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid" }, { status: 500 });
   }
 
-  // Sign JWT (no session ID needed -- extension decrypts locally)
+  // Extension decrypts locally, so the cache value is only a liveness
+  // sentinel. The sid lets change-password's deleteByPrefix revoke this
+  // token (see /api/extension/entries).
+  const sessionId = generateSessionId(String(user.id));
+  const keyCache = getKeyCache();
+  await keyCache.set(sessionId, "ext", CACHE_CONFIG.ttlSeconds);
+
   const token = await signSessionToken({
     sub: String(user.id),
     email,
+    sid: sessionId,
   });
 
   await logAuditEvent({
