@@ -76,6 +76,7 @@ export async function proxyHandler(request: NextRequest) {
     `img-src 'self' data: blob:`,
     `font-src 'self'`,
     `connect-src 'self' https://vitals.vercel-insights.com https://*.vercel-analytics.com`,
+    `frame-src 'self' https://vercel.live`,
     `frame-ancestors 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,
