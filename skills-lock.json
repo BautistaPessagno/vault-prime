@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "owasp-security": {
+      "source": "hoodini/ai-agents-skills",
+      "sourceType": "github",
+      "computedHash": "96ddeeb1eab361ebb8e18c1770a3baab804526fb94966f644a21ae72cc7841e2"
+    }
+  }
+}
